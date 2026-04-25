@@ -8,16 +8,17 @@ import time
 from urllib.parse import urlparse
 import requests
 import base64
-
+import difflib # Added for similarity check
+from tranco import Tranco # Added Tranco
 
 rf = joblib.load("rf_model.pkl")
 scaler = joblib.load("scaler.pkl")
-
 explainer = shap.TreeExplainer(rf)
 feature_columns = joblib.load("feature_columns.pkl")
 
 reputation_cache = {}
 cache_timestamp = {}
+TOP_DOMAINS = []
 
 CACHE_TTL = 60 * 60 * 24
 VIRUSTOTAL_API_KEY = "4f8b7b5e6627b79011830ba413181e136e294c00e2d17d23fd71b028de9efcb8"
@@ -69,6 +70,31 @@ def get_reputation_score(url):
         return 0.5
 
 app = FastAPI()
+
+# --- Added: Tranco Startup Loader ---
+@app.on_event("startup")
+async def startup_event():
+    global TOP_DOMAINS
+    try:
+        t = Tranco(cache=True)
+        TOP_DOMAINS = t.list().top(1000)
+        print("Tranco Top 1000 loaded.")
+    except Exception as e:
+        print(f"Tranco error: {e}")
+        TOP_DOMAINS = ["google.com", "apple.com", "facebook.com"]
+
+# --- Added: Similarity Check Function ---
+def is_typosquatting(url):
+    user_domain = extract_domain(url)
+    if user_domain in TOP_DOMAINS:
+        return False
+    
+    # Check if the domain is 'too close' to a top brand
+    for top_domain in TOP_DOMAINS:
+        similarity = difflib.SequenceMatcher(None, user_domain, top_domain).ratio()
+        if 0.8 <= similarity < 1.0:
+            return True
+    return False
 
 class URLRequest(BaseModel):
     url: str
@@ -206,10 +232,10 @@ def extract_domain(url):
 def predict_input(data: URLRequest):
     try:
         url = data.url
-
         reputation_score = get_reputation_score(url)
 
-        if reputation_score <= TRUST_REPUTATION_THRESHOLD:
+        # MODIFIED: Logic now checks both Reputation AND Typosquatting
+        if reputation_score <= TRUST_REPUTATION_THRESHOLD and not is_typosquatting(url):
             return {
                 "url": url,
                 "prediction": "Legitimate",
@@ -220,38 +246,32 @@ def predict_input(data: URLRequest):
 
         features_dict = extract_url_features(url)
         input_df = prepare_input(url)
-
         input_scaled = scaler.transform(input_df)
-
         prob = rf.predict_proba(input_scaled)[0][1]
 
         final_score = (0.6 * prob) + (0.4 * reputation_score)
-
         pred = 1 if final_score >= 0.5 else 0
 
-        print("VirusTotal called:", url)
-
         shap_values = get_shap_explanation(input_df.values[0])
+        
+        # Adding typosquatting as a reason if detected
+        reasons = explain_features(features_dict, pred, final_score)
+        if is_typosquatting(url) and pred == 1:
+            reasons.insert(0, "Possible typosquatting/brand impersonation detected")
 
         return {
             "url": url,
             "prediction": "Phishing" if pred == 1 else "Legitimate",
             "risk_score": round(final_score * 100, 2),
             "shap_values": {k: float(v) for k, v in shap_values.items()},
-            "reasons": explain_features(features_dict, pred, final_score)
+            "reasons": reasons
         }
-
     except Exception as e:
-        return {
-            "error": str(e)
-        }
+        return {"error": str(e)}
 
 @app.get("/cache")
 def view_cache():
-    return {
-        "reputation_cache": reputation_cache,
-        "cache_timestamp": cache_timestamp
-    }
+    return {"reputation_cache": reputation_cache, "cache_timestamp": cache_timestamp}
 
 @app.get("/")
 def home():
