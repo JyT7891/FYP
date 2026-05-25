@@ -396,7 +396,7 @@ reputation_cache.pkl
 *.p12
 
 # Environment variables (keep example but not actual)
-.env
+*.env
 .env.production
 .env.development
 .env.local
