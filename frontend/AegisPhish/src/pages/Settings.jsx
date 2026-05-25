@@ -1,25 +1,16 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Section({ title, children }) {
   return (
     <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
-      <p className="text-xs text-gray-500 tracking-widest uppercase mb-5">
-        {title}
-      </p>
+      <p className="text-xs text-gray-500 tracking-widest uppercase mb-5">{title}</p>
       {children}
     </div>
   );
 }
 
-function Field({
-  label,
-  type = "text",
-  placeholder,
-  value,
-  onChange,
-  error,
-  disabled,
-}) {
+function Field({ label, type = "text", placeholder, value, onChange, error, disabled }) {
   const [show, setShow] = useState(false);
   const isPassword = type === "password";
 
@@ -63,15 +54,14 @@ function Toast({ message, type }) {
       ? "bg-teal-500/10 border-teal-500/30 text-teal-400"
       : "bg-red-500/10 border-red-500/30 text-red-400";
   return (
-    <div
-      className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg border text-sm z-50 shadow-lg ${styles}`}
-    >
+    <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg border text-sm z-50 shadow-lg ${styles}`}>
       {message}
     </div>
   );
 }
 
 export default function Settings() {
+  const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "" });
 
@@ -92,36 +82,24 @@ export default function Settings() {
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Password form
-  const [passwords, setPasswords] = useState({
-    current: "",
-    newPass: "",
-    confirm: "",
-  });
+  const [passwords, setPasswords] = useState({ current: "", newPass: "", confirm: "" });
   const [passwordErrors, setPasswordErrors] = useState({});
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Delete confirm input
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  // Load avatar from localStorage on mount
+  // Load avatar and user email from backend on mount
   useEffect(() => {
     const storedAvatar = localStorage.getItem("avatar");
-    if (
-      storedAvatar &&
-      storedAvatar !== "null" &&
-      storedAvatar !== "undefined"
-    ) {
-      // Convert relative path to full URL if needed
+    if (storedAvatar && storedAvatar !== "null" && storedAvatar !== "undefined") {
       let avatarUrl = storedAvatar;
       if (avatarUrl.startsWith("/static")) {
         avatarUrl = `http://127.0.0.1:8000${avatarUrl}`;
       }
       setAvatar(avatarUrl);
     }
-  }, []);
 
-  // Load user email from backend on mount
-  useEffect(() => {
     const fetchUserInfo = async () => {
       try {
         const res = await fetch("http://127.0.0.1:8000/api/auth/me", {
@@ -129,9 +107,8 @@ export default function Settings() {
         });
         const data = await res.json();
         if (res.ok && data.email) {
-          setProfile((prev) => ({ ...prev, email: data.email }));
+          setProfile(prev => ({ ...prev, email: data.email }));
         }
-        // Also update avatar if it came from backend
         if (res.ok && data.avatar && data.avatar !== "") {
           let avatarUrl = data.avatar;
           if (avatarUrl.startsWith("/static")) {
@@ -176,10 +153,8 @@ export default function Settings() {
       const fullUrl = `http://127.0.0.1:8000${data.avatar}`;
       localStorage.setItem("avatar", fullUrl);
       setAvatar(fullUrl);
-
-      // Dispatch a custom event so Layout can update
+      
       window.dispatchEvent(new Event("avatar-updated"));
-
       showToast("Profile picture updated.");
     } catch {
       showToast("Could not upload image.", "error");
@@ -195,19 +170,15 @@ export default function Settings() {
         method: "DELETE",
         headers,
       });
-
+      
       if (!res.ok) {
         showToast("Failed to remove profile picture.", "error");
         return;
       }
-
-      // Clear avatar from localStorage and state
+      
       localStorage.removeItem("avatar");
       setAvatar("");
-
-      // Dispatch event to update Layout
       window.dispatchEvent(new Event("avatar-updated"));
-
       showToast("Profile picture removed. Default avatar restored.");
     } catch {
       showToast("Could not connect to server.", "error");
@@ -229,10 +200,7 @@ export default function Settings() {
       const res = await fetch("http://127.0.0.1:8000/api/user/profile", {
         method: "PATCH",
         headers,
-        body: JSON.stringify({
-          name: profile.name,
-          email: profile.email || undefined,
-        }),
+        body: JSON.stringify({ name: profile.name, email: profile.email || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -240,10 +208,7 @@ export default function Settings() {
         return;
       }
       localStorage.setItem("name", profile.name);
-
-      // Dispatch a custom event so Layout can update
       window.dispatchEvent(new Event("profile-updated"));
-
       showToast("Profile updated successfully.");
     } catch {
       showToast("Could not connect to server.", "error");
@@ -256,11 +221,9 @@ export default function Settings() {
     const e = {};
     if (!passwords.current) e.current = "Current password is required.";
     if (!passwords.newPass) e.newPass = "New password is required.";
-    else if (passwords.newPass.length < 8)
-      e.newPass = "Must be at least 8 characters.";
+    else if (passwords.newPass.length < 8) e.newPass = "Must be at least 8 characters.";
     if (!passwords.confirm) e.confirm = "Please confirm your new password.";
-    else if (passwords.confirm !== passwords.newPass)
-      e.confirm = "Passwords do not match.";
+    else if (passwords.confirm !== passwords.newPass) e.confirm = "Passwords do not match.";
     setPasswordErrors(e);
     if (Object.keys(e).length > 0) return;
 
@@ -269,10 +232,7 @@ export default function Settings() {
       const res = await fetch("http://127.0.0.1:8000/api/user/password", {
         method: "PATCH",
         headers,
-        body: JSON.stringify({
-          current_password: passwords.current,
-          new_password: passwords.newPass,
-        }),
+        body: JSON.stringify({ current_password: passwords.current, new_password: passwords.newPass }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -311,86 +271,78 @@ export default function Settings() {
       <header className="border-b border-teal-500/20 px-6 py-4 flex items-center justify-between bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div>
           <h1 className="text-base font-semibold">Settings</h1>
-          <p className="text-xs text-gray-500">Manage your account</p>
+          <p className="text-xs text-gray-500">Manage your account settings</p>
         </div>
-        <span className="flex items-center gap-1.5 text-xs text-teal-400 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-full">
-          <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></span>
-          Protected
-        </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/profile")}
+            className="text-xs px-3 py-1.5 rounded-lg border border-teal-500/40 text-teal-400 hover:bg-teal-500/10 transition flex items-center gap-1"
+          >
+            👤 View Profile
+          </button>
+          <span className="flex items-center gap-1.5 text-xs text-teal-400 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-full">
+            <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></span>
+            Protected
+          </span>
+        </div>
       </header>
 
-      <div className="p-8 space-y-6 w-full max-w-2xl">
-        {/* Account Info */}
-        <Section title="Account Info">
-          <div className="flex items-center gap-4 mb-4">
+      <div className="p-8 space-y-6 w-full max-w-2xl mx-auto">
+        {/* Profile Picture Section */}
+        <Section title="Profile Picture">
+          <div className="flex items-center gap-6 flex-wrap">
             <div className="relative shrink-0">
               {avatar ? (
-                <img
-                  src={avatar}
-                  alt="avatar"
-                  className="w-16 h-16 rounded-full object-cover border-2 border-teal-500/40"
+                <img 
+                  src={avatar} 
+                  alt="avatar" 
+                  className="w-20 h-20 rounded-full object-cover border-2 border-teal-500/40"
                   onError={() => {
                     localStorage.removeItem("avatar");
                     setAvatar("");
                   }}
                 />
               ) : (
-                <div className="w-16 h-16 rounded-full bg-teal-500/20 border-2 border-teal-500/30 flex items-center justify-center text-teal-400 text-2xl font-bold">
+                <div className="w-20 h-20 rounded-full bg-teal-500/20 border-2 border-teal-500/30 flex items-center justify-center text-teal-400 text-2xl font-bold">
                   {userName.charAt(0).toUpperCase()}
                 </div>
               )}
               <label className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition cursor-pointer text-xs text-white">
                 {avatarLoading ? "…" : "Edit"}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                />
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} />
               </label>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-200">{userName}</p>
-              <p className="text-xs text-teal-400 capitalize mt-0.5">
-                {userRole}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                Hover over photo to change
-              </p>
+              <p className="text-sm text-gray-300">Profile Picture</p>
+              <p className="text-xs text-gray-500 mt-1">JPEG, PNG, or WebP (max 2MB)</p>
+              {avatar && (
+                <button
+                  onClick={handleRemoveAvatar}
+                  disabled={removingAvatar}
+                  className="mt-2 text-xs text-red-400 hover:text-red-300 transition"
+                >
+                  {removingAvatar ? "Removing…" : "Remove picture"}
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Remove Avatar Button - Only show if user has an avatar */}
-          {avatar && (
-            <button
-              onClick={handleRemoveAvatar}
-              disabled={removingAvatar}
-              className="mt-2 px-4 py-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 text-sm hover:bg-red-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {removingAvatar ? "Removing…" : "Remove Profile Picture"}
-            </button>
-          )}
         </Section>
 
-        {/* Profile */}
+        {/* Update Profile */}
         <Section title="Update Profile">
           <Field
             label="Full name"
             placeholder="Your name"
             value={profile.name}
-            onChange={(e) =>
-              setProfile((p) => ({ ...p, name: e.target.value }))
-            }
+            onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
             error={profileErrors.name}
           />
           <Field
-            label="New email address (optional)"
+            label="Email address"
             type="email"
-            placeholder="new@example.com"
+            placeholder="your@email.com"
             value={profile.email}
-            onChange={(e) =>
-              setProfile((p) => ({ ...p, email: e.target.value }))
-            }
+            onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
             error={profileErrors.email}
           />
           <button
@@ -402,36 +354,30 @@ export default function Settings() {
           </button>
         </Section>
 
-        {/* Password */}
+        {/* Change Password */}
         <Section title="Change Password">
           <Field
             label="Current password"
             type="password"
-            placeholder="•••••••"
+            placeholder="Enter current password"
             value={passwords.current}
-            onChange={(e) =>
-              setPasswords((p) => ({ ...p, current: e.target.value }))
-            }
+            onChange={(e) => setPasswords((p) => ({ ...p, current: e.target.value }))}
             error={passwordErrors.current}
           />
           <Field
             label="New password"
             type="password"
-            placeholder="•••••••"
+            placeholder="Enter new password"
             value={passwords.newPass}
-            onChange={(e) =>
-              setPasswords((p) => ({ ...p, newPass: e.target.value }))
-            }
+            onChange={(e) => setPasswords((p) => ({ ...p, newPass: e.target.value }))}
             error={passwordErrors.newPass}
           />
           <Field
             label="Confirm new password"
             type="password"
-            placeholder="•••••••"
+            placeholder="Confirm new password"
             value={passwords.confirm}
-            onChange={(e) =>
-              setPasswords((p) => ({ ...p, confirm: e.target.value }))
-            }
+            onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
             error={passwordErrors.confirm}
           />
           <button
@@ -446,12 +392,9 @@ export default function Settings() {
         {/* Danger Zone */}
         <Section title="Danger Zone">
           <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
-            <p className="text-sm font-medium text-red-400 mb-1">
-              Delete Account
-            </p>
+            <p className="text-sm font-medium text-red-400 mb-1">Delete Account</p>
             <p className="text-xs text-gray-500 mb-4">
-              Permanently deletes your account and all associated scan history.
-              This action cannot be undone.
+              Permanently deletes your account and all associated scan history. This action cannot be undone.
             </p>
             <button
               onClick={() => setShowDeleteConfirm(true)}
@@ -463,7 +406,7 @@ export default function Settings() {
         </Section>
 
         <p className="text-center text-xs text-gray-700 pb-2">
-          ▢ AegisPhish · Real-time phishing detection · All scans are private
+          ▢ AegisPhish · Your data is encrypted and secure
         </p>
       </div>
 
@@ -471,16 +414,12 @@ export default function Settings() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0a192f] border border-red-500/30 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold mb-2 text-red-400">
-              Delete Account
-            </h3>
+            <h3 className="text-lg font-semibold mb-2 text-red-400">Delete Account</h3>
             <p className="text-gray-400 text-sm mb-4">
-              This will permanently delete your account and all scan history.
-              This cannot be undone.
+              This will permanently delete your account and all scan history. This cannot be undone.
             </p>
             <p className="text-xs text-gray-500 mb-2">
-              Type <span className="text-red-400 font-mono">DELETE</span> to
-              confirm:
+              Type <span className="text-red-400 font-mono">DELETE</span> to confirm:
             </p>
             <input
               type="text"

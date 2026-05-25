@@ -5,6 +5,7 @@ const navItems = [
   { icon: "▣", label: "Dashboard", path: "/dashboard" },
   { icon: "⬡", label: "Scan URL", path: "/scan" },
   { icon: "☰", label: "Reports", path: "/reports" },
+  { icon: "👤", label: "Profile", path: "/profile" },
   { icon: "◎", label: "Settings", path: "/settings" },
 ];
 
@@ -13,14 +14,20 @@ export default function Layout() {
   const location = useLocation();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || "");
-  const [userName, setUserName] = useState(localStorage.getItem("name") || "User");
+  const [userName, setUserName] = useState(
+    localStorage.getItem("name") || "User",
+  );
   const userRole = localStorage.getItem("role") || "user";
 
   // Load avatar and name from localStorage on mount
   useEffect(() => {
     const storedAvatar = localStorage.getItem("avatar");
     const storedName = localStorage.getItem("name");
-    if (storedAvatar && storedAvatar !== "null" && storedAvatar !== "undefined") {
+    if (
+      storedAvatar &&
+      storedAvatar !== "null" &&
+      storedAvatar !== "undefined"
+    ) {
       setAvatar(storedAvatar);
     }
     if (storedName) {
@@ -32,7 +39,11 @@ export default function Layout() {
   useEffect(() => {
     const handleAvatarUpdate = () => {
       const updatedAvatar = localStorage.getItem("avatar");
-      if (updatedAvatar && updatedAvatar !== "null" && updatedAvatar !== "undefined") {
+      if (
+        updatedAvatar &&
+        updatedAvatar !== "null" &&
+        updatedAvatar !== "undefined"
+      ) {
         setAvatar(updatedAvatar);
       } else {
         setAvatar("");
@@ -64,7 +75,20 @@ export default function Layout() {
     navigate("/", { replace: true });
   };
 
-  const activeNav = navItems.find((item) => item.path === location.pathname)?.label || "Dashboard";
+  // Determine which nav item is active
+  const getActiveNav = () => {
+    const exactMatch = navItems.find((item) => item.path === location.pathname);
+    if (exactMatch) return exactMatch.label;
+
+    if (location.pathname.startsWith("/scan")) return "Scan URL";
+    if (location.pathname.startsWith("/reports")) return "Reports";
+    if (location.pathname.startsWith("/settings")) return "Settings";
+    if (location.pathname.startsWith("/profile")) return "Profile";
+
+    return "Dashboard";
+  };
+
+  const activeNav = getActiveNav();
 
   // Construct full avatar URL if needed
   const getAvatarUrl = () => {
@@ -110,12 +134,11 @@ export default function Layout() {
         {/* User Section with Logout */}
         <div className="p-3 border-t border-teal-500/20">
           <div className="flex items-center gap-3 px-2 py-2 mb-2">
-            {/* Avatar - Show uploaded image or default initial */}
             <div className="w-7 h-7 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400 text-xs font-bold shrink-0 overflow-hidden">
               {getAvatarUrl() ? (
-                <img 
-                  src={getAvatarUrl()} 
-                  alt="avatar" 
+                <img
+                  src={getAvatarUrl()}
+                  alt="avatar"
                   className="w-full h-full object-cover"
                   onError={() => {
                     localStorage.removeItem("avatar");
@@ -127,8 +150,12 @@ export default function Layout() {
               )}
             </div>
             <div className="hidden md:block flex-1 min-w-0">
-              <p className="text-xs text-gray-200 truncate font-medium">{userName}</p>
-              <p className="text-xs text-gray-500 truncate capitalize">{userRole}</p>
+              <p className="text-xs text-gray-200 truncate font-medium">
+                {userName}
+              </p>
+              <p className="text-xs text-gray-500 truncate capitalize">
+                {userRole}
+              </p>
             </div>
           </div>
 
@@ -156,7 +183,8 @@ export default function Layout() {
           <div className="bg-[#0a192f] border border-teal-500/30 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
             <h3 className="text-lg font-semibold mb-2">Confirm Logout</h3>
             <p className="text-gray-400 text-sm mb-6">
-              Are you sure you want to logout? You'll need to login again to access your dashboard.
+              Are you sure you want to logout? You'll need to login again to
+              access your dashboard.
             </p>
             <div className="flex gap-3">
               <button
