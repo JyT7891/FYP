@@ -6,7 +6,6 @@ const navItems = [
   { icon: "⬡", label: "Scan URL", path: "/scan" },
   { icon: "☰", label: "Reports", path: "/reports" },
   { icon: "👤", label: "Profile", path: "/profile" },
-  { icon: "◎", label: "Settings", path: "/settings" },
 ];
 
 export default function Layout() {

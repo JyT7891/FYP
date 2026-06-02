@@ -3,18 +3,13 @@ import uuid
 import shutil
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from bson import ObjectId
-import pyotp
+from datetime import datetime, timedelta
 
 from app.database import users_collection, scans_collection, reports_collection
-from app.models import ProfileUpdateRequest, PasswordUpdateRequest, TwoFactorVerifyRequest
+from app.models import ProfileUpdateRequest, PasswordUpdateRequest
 from app.auth import get_current_user
 from app.utils.security import hash_password, verify_password
 from app.utils.email import send_verification_email
-from app.config import settings
-import qrcode
-from io import BytesIO
-import base64 as b64
-from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -104,65 +99,6 @@ def delete_avatar(current_user: dict = Depends(get_current_user)):
     
     users_collection.update_one({"_id": ObjectId(current_user["sub"])}, {"$set": {"avatar": ""}})
     return {"message": "Avatar removed successfully."}
-
-
-@router.post("/2fa/enable")
-def enable_2fa(current_user: dict = Depends(get_current_user)):
-    secret = pyotp.random_base32()
-    user = users_collection.find_one({"_id": ObjectId(current_user["sub"])})
-    
-    uri = pyotp.totp.TOTP(secret).provisioning_uri(name=user["email"], issuer_name="AegisPhish")
-    
-    qr = qrcode.QRCode(box_size=10, border=4)
-    qr.add_data(uri)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    qr_base64 = b64.b64encode(buffered.getvalue()).decode()
-    
-    users_collection.update_one({"_id": ObjectId(current_user["sub"])}, {"$set": {"pending_2fa_secret": secret}})
-    
-    return {"secret": secret, "qr_code": qr_base64, "uri": uri}
-
-
-@router.post("/2fa/verify")
-def verify_2fa(data: TwoFactorVerifyRequest, current_user: dict = Depends(get_current_user)):
-    user = users_collection.find_one({"_id": ObjectId(current_user["sub"])})
-    secret = user.get("pending_2fa_secret")
-    
-    if not secret:
-        raise HTTPException(status_code=400, detail="No pending 2FA setup")
-    
-    totp = pyotp.TOTP(secret)
-    if not totp.verify(data.code):
-        raise HTTPException(status_code=400, detail="Invalid code")
-    
-    users_collection.update_one(
-        {"_id": ObjectId(current_user["sub"])},
-        {"$set": {"two_factor_enabled": True, "two_factor_secret": secret}, "$unset": {"pending_2fa_secret": ""}}
-    )
-    
-    return {"message": "2FA enabled successfully"}
-
-
-@router.post("/2fa/disable")
-def disable_2fa(data: TwoFactorVerifyRequest, current_user: dict = Depends(get_current_user)):
-    user = users_collection.find_one({"_id": ObjectId(current_user["sub"])})
-    secret = user.get("two_factor_secret")
-    
-    if secret:
-        totp = pyotp.TOTP(secret)
-        if not totp.verify(data.code):
-            raise HTTPException(status_code=400, detail="Invalid code")
-    
-    users_collection.update_one(
-        {"_id": ObjectId(current_user["sub"])},
-        {"$set": {"two_factor_enabled": False, "two_factor_secret": None}}
-    )
-    
-    return {"message": "2FA disabled successfully"}
 
 
 @router.delete("/delete")

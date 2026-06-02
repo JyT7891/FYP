@@ -13,10 +13,6 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
-class TwoFactorLoginRequest(BaseModel):
-    temp_token: str
-    code: str
-
 class ReportRequest(BaseModel):
     url: str
     note: str = ""
@@ -29,5 +25,15 @@ class PasswordUpdateRequest(BaseModel):
     current_password: str
     new_password: str
 
-class TwoFactorVerifyRequest(BaseModel):
+# Forgot Password Schemas
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+# Registration Verification Schema
+class VerifyRegistrationRequest(BaseModel):
+    user_id: str
     code: str
