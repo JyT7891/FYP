@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 function RiskBadge({ risk, prediction }) {
   if (prediction === "Legitimate") {
@@ -30,6 +31,7 @@ function StatCard({ label, value, sub, accent }) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [scanInput, setScanInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
@@ -47,17 +49,44 @@ export default function Dashboard() {
     Authorization: `Bearer ${token}`,
   };
 
+  // Helper function to get fresh headers
+  const getHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
   // Fetch stats and recent scans on load
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/stats", { headers })
-      .then((r) => r.json())
-      .then((data) => setStats(data))
-      .catch(console.error);
+    const fetchData = async () => {
+      const headers = getHeaders();
+      const token = localStorage.getItem("token");
 
-    fetch("http://127.0.0.1:8000/scans/recent", { headers })
-      .then((r) => r.json())
-      .then((data) => setRecentScans(data.scans || []))
-      .catch(console.error);
+      if (!token) return;
+
+      try {
+        const [statsRes, scansRes] = await Promise.all([
+          fetch("http://127.0.0.1:8000/stats", { headers }),
+          fetch("http://127.0.0.1:8000/scans/recent", { headers }),
+        ]);
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+
+        if (scansRes.ok) {
+          const scansData = await scansRes.json();
+          setRecentScans(scansData.scans || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const handleScan = async () => {
@@ -68,30 +97,29 @@ export default function Dashboard() {
     try {
       const response = await fetch("http://127.0.0.1:8000/predict", {
         method: "POST",
-        headers,
+        headers: getHeaders(),
         body: JSON.stringify({ url: scanInput }),
+        credentials: "include",
       });
+
+      // If unauthorized, redirect to login
+      if (response.status === 401) {
+        localStorage.clear();
+        window.location.href = "/";
+        return;
+      }
 
       const data = await response.json();
 
       setScanResult({
+        _id: data._id,
         safe: data.prediction === "Legitimate",
         prediction: data.prediction,
         risk: data.risk_score,
         reason: data.reasons?.join(", ") || "No details available",
       });
-
-      // Refresh recent scans and stats after a new scan
-      fetch("http://127.0.0.1:8000/scans/recent", { headers })
-        .then((r) => r.json())
-        .then((data) => setRecentScans(data.scans || []))
-        .catch(console.error);
-
-      fetch("http://127.0.0.1:8000/stats", { headers })
-        .then((r) => r.json())
-        .then((data) => setStats(data))
-        .catch(console.error);
     } catch (error) {
+      console.error("Scan failed:", error);
       setScanResult({
         safe: false,
         risk: 100,
@@ -168,24 +196,28 @@ export default function Dashboard() {
             </button>
           </div>
 
+          {/* Scan Result - Clickable like Profile page */}
           {scanResult && (
             <div
-              className={`mt-4 p-4 rounded-lg border text-sm flex items-start gap-3 ${
+              onClick={() =>
+                scanResult._id && navigate(`/scan/${scanResult._id}`)
+              }
+              className={`mt-4 p-4 rounded-lg border text-sm flex items-start gap-3 transition-all duration-200 ${
                 scanResult.safe
-                  ? "bg-teal-500/5 border-teal-500/30"
+                  ? "bg-teal-500/5 border-teal-500/30 hover:bg-teal-500/10 hover:border-teal-400"
                   : scanResult.prediction === "Suspicious"
-                    ? "bg-orange-500/5 border-orange-500/30"
-                    : "bg-red-500/5 border-red-500/30"
-              }`}
+                    ? "bg-orange-500/5 border-orange-500/30 hover:bg-orange-500/10 hover:border-orange-400"
+                    : "bg-red-500/5 border-red-500/30 hover:bg-red-500/10 hover:border-red-400"
+              } ${scanResult._id ? "cursor-pointer group" : "cursor-default"}`}
             >
-              <span className="text-xl">
+              <span className="text-xl shrink-0">
                 {scanResult.safe
                   ? "✓"
                   : scanResult.prediction === "Suspicious"
                     ? "⚡"
                     : "⚠"}
               </span>
-              <div>
+              <div className="flex-1">
                 <p
                   className={`font-semibold ${
                     scanResult.safe
@@ -205,16 +237,26 @@ export default function Dashboard() {
                   Risk score: {scanResult.risk}% — {scanResult.reason}
                 </p>
               </div>
+              {scanResult._id && (
+                <div className="shrink-0 text-gray-500 group-hover:text-teal-400 transition">
+                  →
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Recent Scans Table */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-teal-500/20">
-            <p className="text-xs text-gray-500 tracking-widest uppercase">
-              Recent Scans
-            </p>
+          <div className="px-5 py-4 border-b border-teal-500/20">
+            <div>
+              <p className="text-xs text-gray-500 tracking-widest uppercase">
+                Recent Scans
+              </p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Click on any scan to view details
+              </p>
+            </div>
           </div>
           <div className="divide-y divide-teal-500/10">
             {recentScans.length === 0 ? (
@@ -225,10 +267,11 @@ export default function Dashboard() {
               recentScans.map((scan, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition"
+                  onClick={() => navigate(`/scan/${scan._id}`)}
+                  className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition cursor-pointer group"
                 >
                   <div className="flex-1 min-w-0 mr-4">
-                    <p className="text-sm font-mono text-gray-300 truncate">
+                    <p className="text-sm font-mono text-gray-300 truncate group-hover:text-teal-400 transition">
                       {scan.url}
                     </p>
                     <p className="text-xs text-gray-600 mt-0.5">
@@ -245,6 +288,9 @@ export default function Dashboard() {
                         ? new Date(scan.scanned_at).toLocaleString()
                         : "—"}
                     </span>
+                    <div className="shrink-0 text-gray-500 group-hover:text-teal-400 transition">
+                      →
+                    </div>
                   </div>
                 </div>
               ))

@@ -10,10 +10,15 @@ router = APIRouter()
 
 @router.get("/scans/recent")
 def get_recent_scans(current_user: dict = Depends(get_current_user)):
-    """Get recent 10 scans for current user"""
+    """Get recent 10 scans - includes user's own scans AND anonymous scans"""
     scans = list(
         scans_collection
-        .find({"user_id": current_user["sub"]}, {"_id": 1, "shap_values": 0})
+        .find({
+            "$or": [
+                {"user_id": current_user["sub"]},  # User's own scans
+                {"user_id": None}                  # Anonymous scans
+            ]
+        }, {"_id": 1, "shap_values": 0})
         .sort("scanned_at", -1)
         .limit(10)
     )
@@ -24,10 +29,15 @@ def get_recent_scans(current_user: dict = Depends(get_current_user)):
 
 @router.get("/scans/all")
 def get_all_user_scans(current_user: dict = Depends(get_current_user)):
-    """Get all scans for current user"""
+    """Get all scans - includes user's own scans AND anonymous scans"""
     scans = list(
         scans_collection
-        .find({"user_id": current_user["sub"]}, {"_id": 1, "shap_values": 0})
+        .find({
+            "$or": [
+                {"user_id": current_user["sub"]},
+                {"user_id": None}
+            ]
+        }, {"_id": 1, "shap_values": 0})
         .sort("scanned_at", -1)
     )
     for scan in scans:
@@ -37,8 +47,13 @@ def get_all_user_scans(current_user: dict = Depends(get_current_user)):
 
 @router.get("/stats")
 def get_stats(current_user: dict = Depends(get_current_user)):
-    """Get statistics for current user"""
-    scans = list(scans_collection.find({"user_id": current_user["sub"]}))
+    """Get statistics - includes user's own scans AND anonymous scans"""
+    scans = list(scans_collection.find({
+        "$or": [
+            {"user_id": current_user["sub"]},
+            {"user_id": None}
+        ]
+    }))
     total = len(scans)
     phishing = len([s for s in scans if s["prediction"] == "Phishing"])
     suspicious = len([s for s in scans if s["prediction"] == "Suspicious"])
@@ -59,7 +74,14 @@ def get_scan_by_id(scan_id: str, current_user: dict = Depends(get_current_user))
     except:
         raise HTTPException(status_code=400, detail="Invalid scan ID format")
     
-    scan = scans_collection.find_one({"_id": obj_id, "user_id": current_user["sub"]})
+    # Look for scan owned by user OR anonymous scan
+    scan = scans_collection.find_one({
+        "_id": obj_id,
+        "$or": [
+            {"user_id": current_user["sub"]},
+            {"user_id": None}
+        ]
+    })
     
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
