@@ -15,6 +15,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminScans from "./pages/AdminScans";
 import AdminReports from "./pages/AdminReports";
+import AdminUsers from "./pages/AdminUsers";
 
 import "./index.css";
 
@@ -68,6 +69,7 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/scans" element={<AdminScans />} />
           <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
         </Route>
 
         {/* Catch all */}
