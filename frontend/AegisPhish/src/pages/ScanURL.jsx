@@ -1,28 +1,5 @@
 import { useState } from "react";
 
-function ShapBar({ feature, value, maxVal }) {
-  const isPositive = value >= 0;
-  const width = Math.min((Math.abs(value) / maxVal) * 100, 100);
-  return (
-    <div className="flex items-center gap-3 text-xs">
-      <span className="text-gray-400 w-40 truncate shrink-0 font-mono">{feature}</span>
-      <div className="flex-1 flex items-center gap-2">
-        <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              isPositive ? "bg-red-400" : "bg-teal-400"
-            }`}
-            style={{ width: `${width}%` }}
-          />
-        </div>
-        <span className={`w-14 text-right shrink-0 ${isPositive ? "text-red-400" : "text-teal-400"}`}>
-          {value > 0 ? "+" : ""}{value.toFixed(4)}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function RiskGauge({ score, prediction }) {
   const color =
     prediction === "Legitimate" ? "#2dd4bf"
@@ -73,6 +50,29 @@ function RiskGauge({ score, prediction }) {
   );
 }
 
+function ShapBar({ feature, value, maxVal }) {
+  const isPositive = value >= 0;
+  const width = Math.min((Math.abs(value) / maxVal) * 100, 100);
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <span className="text-gray-400 w-48 truncate shrink-0 font-mono">{feature}</span>
+      <div className="flex-1 flex items-center gap-2">
+        <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              isPositive ? "bg-red-400" : "bg-teal-400"
+            }`}
+            style={{ width: `${width}%` }}
+          />
+        </div>
+        <span className={`w-14 text-right shrink-0 ${isPositive ? "text-red-400" : "text-teal-400"}`}>
+          {value > 0 ? "+" : ""}{value.toFixed(4)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function ScanURL() {
   const [scanInput, setScanInput] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -118,8 +118,28 @@ export default function ScanURL() {
         body: JSON.stringify({ url: result.url, note: "Reported by user as phishing" }),
       });
       setReportSent(true);
+      setTimeout(() => setReportSent(false), 3000);
     } catch {
       setError("Failed to submit report.");
+    }
+  };
+
+  const handleRescan = async () => {
+    setScanning(true);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/predict", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ url: scanInput }),
+      });
+      const data = await res.json();
+      if (data.error) { setError(data.error); return; }
+      setResult(data);
+      setReportSent(false);
+    } catch {
+      setError("Could not connect to server.");
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -138,13 +158,23 @@ export default function ScanURL() {
           <h1 className="text-base font-semibold">Scan URL</h1>
           <p className="text-xs text-gray-500">Deep phishing analysis</p>
         </div>
-        <span className="flex items-center gap-1.5 text-xs text-teal-400 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-full">
-          <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></span>
-          Protected
-        </span>
+        <div className="flex gap-2">
+          {result && (
+            <button
+              onClick={handleRescan}
+              className="px-4 py-2 rounded-lg border border-teal-500/40 text-teal-400 text-sm hover:bg-teal-500/10 transition"
+            >
+              ⟳ Rescan URL
+            </button>
+          )}
+          <span className="flex items-center gap-1.5 text-xs text-teal-400 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-full">
+            <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></span>
+            Protected
+          </span>
+        </div>
       </header>
 
-      <div className="p-8 space-y-6 w-full">
+      <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
         {/* URL Input */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">Enter URL to Analyse</p>
@@ -185,58 +215,72 @@ export default function ScanURL() {
         {/* Results */}
         {result && (
           <>
-            {/* Top row: gauge + summary */}
+            {/* URL Section */}
+            <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
+              <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">Scanned URL</p>
+              <p className="font-mono text-sm text-gray-200 break-all">{result.url}</p>
+              <p className="text-xs text-gray-600 mt-3">
+                Analysed just now
+              </p>
+            </div>
+
+            {/* Result Row: Gauge + Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Gauge */}
-              <RiskGauge score={result.risk_score} prediction={result.prediction} />
+              <RiskGauge score={result.risk_score || 0} prediction={result.prediction || "Legitimate"} />
 
-              {/* URL Info + VirusTotal */}
-              <div className="md:col-span-2 rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6 flex flex-col gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">Scanned URL</p>
-                  <p className="text-sm font-mono text-gray-200 break-all">{result.url}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg bg-gray-800/40 border border-gray-700 p-3">
+              <div className="md:col-span-2 rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
                     <p className="text-xs text-gray-500 mb-1">Prediction</p>
-                    <p className={`text-sm font-semibold ${
-                      result.prediction === "Legitimate" ? "text-teal-400"
-                      : result.prediction === "Suspicious" ? "text-orange-400"
-                      : "text-red-400"
-                    }`}>{result.prediction}</p>
+                    <p className={`text-xl font-semibold ${
+                      result.prediction === "Legitimate" ? "text-teal-400" :
+                      result.prediction === "Suspicious" ? "text-orange-400" :
+                      "text-red-400"
+                    }`}>{result.prediction || "—"}</p>
                   </div>
-                  <div className="rounded-lg bg-gray-800/40 border border-gray-700 p-3">
+                  <div>
                     <p className="text-xs text-gray-500 mb-1">Risk Score</p>
-                    <p className="text-sm font-semibold text-white">{result.risk_score?.toFixed(2)}%</p>
+                    <p className="text-xl font-semibold text-white">{result.risk_score?.toFixed(2) || "—"}%</p>
                   </div>
                 </div>
-
-                {/* Report button */}
+                
+                {/* Report button moved here (beside risk score area) */}
                 {result.prediction !== "Legitimate" && (
-                  <button
-                    onClick={handleReport}
-                    disabled={reportSent}
-                    className="mt-auto self-start text-xs px-4 py-2 rounded-lg border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {reportSent ? "✓ Reported" : "⚑ Report this URL"}
-                  </button>
+                  <div className="mt-3">
+                    <button
+                      onClick={handleReport}
+                      disabled={reportSent}
+                      className="px-4 py-2 rounded-lg border border-orange-500/40 text-orange-400 text-sm hover:bg-orange-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {reportSent ? "✓ Reported" : "⚑ Report this URL"}
+                    </button>
+                  </div>
+                )}
+                
+                {result.reasons && result.reasons.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-500 mb-2">Key Indicators</p>
+                    <div className="space-y-1">
+                      {result.reasons.slice(0, 3).map((reason, i) => (
+                        <p key={i} className="text-xs text-gray-400 flex items-start gap-2">
+                          <span className="text-red-400">⚠</span>
+                          {reason}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Reasons / Flags */}
-            {result.reasons?.length > 0 && (
+            {/* All Detection Reasons */}
+            {result.reasons && result.reasons.length > 0 && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">Detection Reasons</p>
                 <div className="space-y-2">
                   {result.reasons.map((reason, i) => (
                     <div key={i} className="flex items-start gap-3 text-sm">
-                      <span className={`mt-0.5 shrink-0 ${
-                        result.prediction === "Legitimate" ? "text-teal-400" : "text-red-400"
-                      }`}>
-                        {result.prediction === "Legitimate" ? "✓" : "⚠"}
-                      </span>
+                      <span className="mt-0.5 shrink-0 text-red-400">⚠</span>
                       <span className="text-gray-300">{reason}</span>
                     </div>
                   ))}
@@ -244,13 +288,13 @@ export default function ScanURL() {
               </div>
             )}
 
-            {/* SHAP Breakdown */}
+            {/* SHAP Feature Importance */}
             {shapEntries.length > 0 && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
                   <div>
                     <p className="text-xs text-gray-500 tracking-widest uppercase">SHAP Feature Importance</p>
-                    <p className="text-xs text-gray-600 mt-1">Top 10 features influencing this prediction</p>
+                    <p className="text-xs text-gray-600 mt-1">Top features influencing this prediction</p>
                   </div>
                   <div className="flex gap-4 text-xs">
                     <span className="flex items-center gap-1.5 text-red-400">
@@ -271,27 +315,29 @@ export default function ScanURL() {
               </div>
             )}
 
-            {/* URL Structure breakdown */}
-            <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
-              <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">URL Structure Analysis</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { label: "Length", value: result.url?.length ?? "—" },
-                  { label: "HTTPS", value: result.url?.startsWith("https") ? "✓ Yes" : "✗ No", color: result.url?.startsWith("https") ? "text-teal-400" : "text-red-400" },
-                  { label: "Dots", value: (result.url?.match(/\./g) || []).length },
-                  { label: "Hyphens", value: (result.url?.match(/-/g) || []).length },
-                  { label: "Digits", value: (result.url?.match(/[0-9]/g) || []).length },
-                  { label: "Slashes", value: (result.url?.match(/\//g) || []).length },
-                  { label: "Has @", value: result.url?.includes("@") ? "✗ Yes" : "✓ No", color: result.url?.includes("@") ? "text-red-400" : "text-teal-400" },
-                  { label: "TLD", value: result.url?.split(".").pop()?.split("/")[0] ?? "—" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-lg bg-gray-800/40 border border-gray-700 p-3">
-                    <p className="text-xs text-gray-500 mb-1">{item.label}</p>
-                    <p className={`text-sm font-semibold ${item.color || "text-white"}`}>{item.value}</p>
-                  </div>
-                ))}
+            {/* URL Structure Analysis */}
+            {result.url && (
+              <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
+                <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">URL Structure Analysis</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "Length", value: result.url.length },
+                    { label: "HTTPS", value: result.url.startsWith("https") ? "✓ Yes" : "✗ No", color: result.url.startsWith("https") ? "text-teal-400" : "text-red-400" },
+                    { label: "Dots", value: (result.url.match(/\./g) || []).length },
+                    { label: "Hyphens", value: (result.url.match(/-/g) || []).length },
+                    { label: "Digits", value: (result.url.match(/[0-9]/g) || []).length },
+                    { label: "Slashes", value: (result.url.match(/\//g) || []).length },
+                    { label: "Has @", value: result.url.includes("@") ? "✗ Yes" : "✓ No", color: result.url.includes("@") ? "text-red-400" : "text-teal-400" },
+                    { label: "TLD", value: result.url.split(".").pop()?.split("/")[0] ?? "—" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-lg bg-gray-800/40 border border-gray-700 p-3">
+                      <p className="text-xs text-gray-500 mb-1">{item.label}</p>
+                      <p className={`text-sm font-semibold ${item.color || "text-white"}`}>{item.value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
 
@@ -306,8 +352,9 @@ export default function ScanURL() {
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-700 pb-2">
-          ▢ AegisPhish · Real-time phishing detection · All scans are private
+        {/* Footer */}
+        <p className="text-center text-xs text-gray-700 pt-4">
+          ▢ AegisPhish · ML-powered phishing detection · SHAP explainability
         </p>
       </div>
     </>
