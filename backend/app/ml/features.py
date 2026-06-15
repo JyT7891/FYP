@@ -92,21 +92,89 @@ def explain_features(features: dict, prediction: int, prob: float, is_typo: bool
     reasons = []
 
     if is_typo:
-        reasons.append("Possible typosquatting/brand impersonation detected (matches top 1000 domain patterns)")
+        reasons.append("Domain appears to be typosquatting (similar to popular legitimate domain)")
 
-    if prediction == 1 or prob > 0.4:
-        if features.get("has_ip") == 1:
-            reasons.append("Uses IP address instead of domain")
-        if features.get("has_at") == 1:
-            reasons.append("Contains '@' symbol")
-        if features.get("num_hyphens", 0) > 3:
-            reasons.append("Excessive hyphens in domain")
-        if features.get("num_digits", 0) > 5:
-            reasons.append("High number of digits in URL")
-        if features.get("has_https") == 0:
-            reasons.append("No HTTPS security indicator")
+    url_length = features.get("url_length", 0)
+    if url_length > 150:
+        reasons.append(f"Unusually long URL ({url_length} characters) - legitimate URLs are typically shorter")
+    elif url_length > 100:
+        reasons.append(f"Very long URL ({url_length} characters) - often used to hide malicious intent")
+    
+    num_dots = features.get("num_dots", 0)
+    if num_dots > 5:
+        reasons.append(f"Excessive dots in URL ({num_dots} dots) - unusual for legitimate websites")
+    elif num_dots > 3:
+        reasons.append(f"Multiple subdomains detected ({num_dots} dots) - may indicate deception")
+    
+    num_hyphens = features.get("num_hyphens", 0)
+    if num_hyphens > 3:
+        reasons.append(f"Excessive hyphens ({num_hyphens} hyphens) - phishing URLs often use hyphens to mimic legitimate domains")
+    
+    num_underscores = features.get("num_underscores", 0)
+    if num_underscores > 2:
+        reasons.append(f"Multiple underscores ({num_underscores} underscores) - uncommon in legitimate URLs")
+    
+    num_slashes = features.get("num_slashes", 0)
+    if num_slashes > 5:
+        reasons.append(f"Excessive slashes ({num_slashes} slashes) - unusually deep directory structure")
+    
+    num_digits = features.get("num_digits", 0)
+    if num_digits > 10:
+        reasons.append(f"High number of digits ({num_digits} digits) - phishing URLs often use random numbers")
+    elif num_digits > 5:
+        reasons.append(f"Multiple digits detected ({num_digits} digits) - may indicate randomly generated URL")
+
+    if features.get("has_at", 0) == 1:
+        reasons.append("@ Symbol detected in URL - can be used to trick browsers")
+    
+    if features.get("has_ip", 0) == 1:
+        reasons.append("Uses IP address instead of domain name - legitimate services rarely use IP addresses directly")
+
+    if features.get("has_https", 0) == 0:
+        reasons.append("No HTTPS security indicator - connection may not be encrypted")
+    
+    if features.get("has_http", 0) == 1:
+        reasons.append("HTTP protocol found within URL path - suspicious redirection pattern")
+
+    keyword_reasons = []
+    
+    if features.get("has_login", 0) == 1:
+        keyword_reasons.append("'login'")
+    if features.get("has_secure", 0) == 1:
+        keyword_reasons.append("'secure'")
+    if features.get("has_verify", 0) == 1:
+        keyword_reasons.append("'verify'")
+    if features.get("has_update", 0) == 1:
+        keyword_reasons.append("'update'")
+    if features.get("has_account", 0) == 1:
+        keyword_reasons.append("'account'")
+    
+    if keyword_reasons:
+        keywords = ", ".join(keyword_reasons)
+        reasons.append(f"Contains urgency/social engineering keywords ({keywords}) - commonly used in phishing attacks")
+
+    subdomain_count = features.get("subdomain_count", 0)
+    if subdomain_count > 2:
+        reasons.append(f"Multiple subdomains ({subdomain_count}) - may be trying to impersonate a legitimate site")
+    
+    tld_length = features.get("tld_length", 0)
+    if tld_length > 4:
+        reasons.append(f"Unusual top-level domain length ({tld_length} characters) - suspicious TLD detected")
+
+    if features.get("shortening_service", 0) == 1:
+        reasons.append("URL shortener detected - destination may be hidden")
+
+    if prediction == 1 or prob > 0.6:
+        if features.get("has_https") == 0 and features.get("has_login") == 1:
+            reasons.append("CRITICAL: Login page without HTTPS - credentials could be intercepted!")
+        
+        if features.get("has_ip") == 1 and features.get("has_login") == 1:
+            reasons.append("CRITICAL: Login form on IP address - highly suspicious!")
 
     if not reasons:
-        reasons.append("URL appears structurally normal")
+        if prediction == 0 and prob < 0.3:
+            reasons.append("URL appears structurally normal and secure")
+        else:
+            reasons.append("URL appears structurally normal")
 
     return reasons

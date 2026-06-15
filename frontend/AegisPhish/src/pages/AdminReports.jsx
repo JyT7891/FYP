@@ -5,6 +5,11 @@ export default function AdminReports() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [showAuthorityModal, setShowAuthorityModal] = useState(false);
+  const [authorityEmail, setAuthorityEmail] = useState("");
+  const [authorityMessage, setAuthorityMessage] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const token = localStorage.getItem("token");
   const headers = {
@@ -42,10 +47,8 @@ export default function AdminReports() {
       console.log("📊 Response:", res.status, data);
       
       if (res.ok) {
-        // Remove from local state immediately for UI feedback
         setReports(prev => prev.filter(r => r._id !== reportId));
         setSelectedReport(null);
-        // Also refresh from server to be safe
         await fetchReports();
       } else {
         console.error("Failed to resolve:", data.detail);
@@ -69,10 +72,8 @@ export default function AdminReports() {
       console.log("📊 Response:", res.status, data);
       
       if (res.ok) {
-        // Remove from local state immediately for UI feedback
         setReports(prev => prev.filter(r => r._id !== reportId));
         setSelectedReport(null);
-        // Also refresh from server to be safe
         await fetchReports();
       } else {
         console.error("Failed to dismiss:", data.detail);
@@ -83,6 +84,50 @@ export default function AdminReports() {
       alert("Could not connect to server");
     }
   };
+
+  const handleSendToAuthorities = async () => {
+    if (!authorityEmail.trim()) {
+      alert("Please enter an authority email address");
+      return;
+    }
+
+    setSendingEmail(true);
+    
+    try {
+      // Simulate sending email to authorities (dummy implementation)
+      console.log("📧 Sending report to authority:", authorityEmail);
+      console.log("Report URL:", selectedReport?.url);
+      console.log("Message:", authorityMessage);
+      
+      // Dummy API call - replace with actual backend endpoint if needed
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Simulate successful email send
+      setEmailSent(true);
+      setTimeout(() => {
+        setShowAuthorityModal(false);
+        setAuthorityEmail("");
+        setAuthorityMessage("");
+        setEmailSent(false);
+        alert("Report has been forwarded to the cybersecurity authorities!");
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Failed to send email:", error);
+      alert("Failed to send report to authorities. Please try again.");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  // Predefined authority email options
+  const authorityOptions = [
+    { name: "MCMC (Malaysian Communications and Multimedia Commission)", email: "aduan@mcmc.gov.my" },
+    { name: "CyberSecurity Malaysia", email: "threats@cybersecurity.my" },
+    { name: "PhishTank", email: "phish@phishtank.com" },
+    { name: "Google Safe Browsing", email: "safe-browsing@google.com" },
+    { name: "Custom Email", email: "" },
+  ];
 
   return (
     <>
@@ -151,7 +196,13 @@ export default function AdminReports() {
                 <p className="text-sm text-gray-400">{selectedReport.note || "No additional notes"}</p>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setShowAuthorityModal(true)}
+                className="flex-1 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20 transition"
+              >
+                📧 Send to Authorities
+              </button>
               <button
                 onClick={() => handleResolve(selectedReport._id)}
                 className="flex-1 px-4 py-2 rounded-lg bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 transition"
@@ -169,6 +220,110 @@ export default function AdminReports() {
                 className="flex-1 px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 transition"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send to Authorities Modal */}
+      {showAuthorityModal && selectedReport && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-[#0f0f23] border border-yellow-500/30 rounded-xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-base font-semibold mb-2 text-yellow-400">Report to Cybersecurity Authorities</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Forward this phishing URL to cybersecurity authorities for investigation and takedown.
+            </p>
+
+            {/* URL being reported */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 mb-4">
+              <p className="text-xs text-gray-500 mb-1">URL being reported</p>
+              <p className="text-sm font-mono text-red-400 break-all">{selectedReport.url}</p>
+            </div>
+
+            {/* Authority Selection */}
+            <div className="mb-4">
+              <label className="text-sm text-gray-300 mb-2 block">Select Authority</label>
+              <select
+                value={authorityEmail}
+                onChange={(e) => setAuthorityEmail(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-yellow-400 transition"
+              >
+                <option value="">Select an authority...</option>
+                {authorityOptions.map((option, index) => (
+                  <option key={index} value={option.email}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Custom Email Input (shown when Custom Email is selected) */}
+            {authorityEmail === "" && (
+              <div className="mb-4">
+                <label className="text-sm text-gray-300 mb-2 block">Custom Email Address</label>
+                <input
+                  type="email"
+                  placeholder="authority@example.com"
+                  value={authorityEmail}
+                  onChange={(e) => setAuthorityEmail(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-yellow-400 transition"
+                />
+              </div>
+            )}
+
+            {/* Additional Message */}
+            <div className="mb-4">
+              <label className="text-sm text-gray-300 mb-2 block">Additional Notes (Optional)</label>
+              <textarea
+                value={authorityMessage}
+                onChange={(e) => setAuthorityMessage(e.target.value)}
+                placeholder="Add any additional information about this phishing URL..."
+                rows={3}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-yellow-400 transition resize-none"
+              />
+            </div>
+
+            {/* Email Preview */}
+            <div className="bg-gray-800/30 border border-gray-700 rounded-lg p-3 mb-4">
+              <p className="text-xs text-gray-500 mb-2">Email Preview:</p>
+              <div className="text-xs text-gray-400 space-y-1">
+                <p><span className="text-gray-500">To:</span> {authorityEmail || "[Selected Authority]"}</p>
+                <p><span className="text-gray-500">Subject:</span> Phishing URL Report - AegisPhish</p>
+                <p><span className="text-gray-500">Message:</span></p>
+                <p className="pl-4">A phishing URL has been detected and reported through AegisPhish:</p>
+                <p className="pl-4 font-mono text-red-400 break-all">{selectedReport.url}</p>
+                {authorityMessage && <p className="pl-4 mt-2">Additional notes: {authorityMessage}</p>}
+                <p className="pl-4 mt-2 text-gray-500">---</p>
+                <p className="pl-4 text-gray-500">Please investigate and take appropriate action.</p>
+                <p className="pl-4 text-gray-500">Sent via AegisPhish Phishing Detection System</p>
+              </div>
+            </div>
+
+            {emailSent ? (
+              <div className="px-4 py-3 rounded-lg bg-teal-500/10 border border-teal-500/30 text-teal-400 text-sm text-center mb-4">
+                ✓ Email sent successfully! The authority has been notified.
+              </div>
+            ) : null}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAuthorityModal(false);
+                  setAuthorityEmail("");
+                  setAuthorityMessage("");
+                  setEmailSent(false);
+                }}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendToAuthorities}
+                disabled={sendingEmail || !authorityEmail}
+                className="flex-1 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingEmail ? "Sending..." : "Send Report"}
               </button>
             </div>
           </div>

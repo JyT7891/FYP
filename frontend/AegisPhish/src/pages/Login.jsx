@@ -124,30 +124,6 @@ export default function Login() {
               <p className="text-gray-400 text-sm">Sign in to continue to AegisPhish</p>
             </div>
 
-            {/* Role Selection */}
-            <div className="flex gap-4 mb-6">
-              <button
-                onClick={() => setRole("user")}
-                className={`flex-1 py-3 rounded-lg border transition hover:bg-teal-500/10 ${
-                  role === "user"
-                    ? "border-teal-400 bg-teal-500/10"
-                    : "border-gray-600 hover:border-teal-400"
-                }`}
-              >
-                User
-              </button>
-              <button
-                onClick={() => setRole("admin")}
-                className={`flex-1 py-3 rounded-lg border transition hover:bg-teal-500/10 ${
-                  role === "admin"
-                    ? "border-teal-400 bg-teal-500/10"
-                    : "border-gray-600 hover:border-teal-400"
-                }`}
-              >
-                Admin
-              </button>
-            </div>
-
             {/* Email */}
             <div className="mb-4">
               <label className="text-sm text-gray-300">Email address</label>
