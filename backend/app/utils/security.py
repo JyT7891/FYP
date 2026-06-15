@@ -19,14 +19,6 @@ def create_token(user_id: str, role: str) -> str:
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
-def create_temp_token(user_id: str, role: str) -> str:
-    payload = {
-        "sub": user_id,
-        "role": role,
-        "exp": datetime.utcnow() + timedelta(minutes=5),
-    }
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
-
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
