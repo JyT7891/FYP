@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";  // ← ADD THIS IMPORT
+import { useNavigate } from "react-router-dom";
 
 function RiskBadge({ prediction, risk }) {
   const styles =
@@ -37,116 +37,15 @@ function MiniBar({ label, value, max, color }) {
   );
 }
 
-function ReportModal({ scan, onClose, onSubmit, submitted }) {
-  const [note, setNote] = useState("");
-  const [agency, setAgency] = useState("MCMC");
-
-  const agencies = [
-    {
-      id: "MCMC",
-      name: "MCMC (Malaysia)",
-      desc: "Malaysian Communications and Multimedia Commission",
-    },
-    {
-      id: "NAPSC",
-      name: "NAPSC / CyberSecurity MY",
-      desc: "National Cyber Security Agency Malaysia",
-    },
-    {
-      id: "Google",
-      name: "Google Safe Browsing",
-      desc: "Report to Google's phishing database",
-    },
-    {
-      id: "PhishTank",
-      name: "PhishTank",
-      desc: "Community phishing verification database",
-    },
-  ];
-
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
-      <div className="bg-[#0a192f] border border-teal-500/30 rounded-xl p-6 max-w-lg w-full shadow-2xl">
-        <h3 className="text-base font-semibold mb-1">Report Phishing URL</h3>
-        <p className="text-xs text-gray-500 mb-4">
-          Submit this URL to a cybersecurity body for investigation and threat
-          mitigation.
-        </p>
-
-        <div className="bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-3 mb-4">
-          <p className="text-xs text-gray-500 mb-1">URL being reported</p>
-          <p className="text-sm font-mono text-red-400 break-all">
-            {scan?.url}
-          </p>
-        </div>
-
-        <p className="text-xs text-gray-400 mb-2">Report to:</p>
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {agencies.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => setAgency(a.id)}
-              className={`text-left px-3 py-2.5 rounded-lg border text-xs transition ${
-                agency === a.id
-                  ? "border-teal-400 bg-teal-500/10 text-teal-400"
-                  : "border-gray-600 text-gray-400 hover:border-teal-500/40"
-              }`}
-            >
-              <p className="font-medium">{a.name}</p>
-              <p className="text-gray-600 mt-0.5 text-xs">{a.desc}</p>
-            </button>
-          ))}
-        </div>
-
-        <p className="text-xs text-gray-400 mb-2">
-          Additional notes (optional):
-        </p>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Describe why this URL is suspicious…"
-          rows={3}
-          className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-teal-400 transition resize-none mb-4 placeholder-gray-600"
-        />
-
-        {submitted ? (
-          <div className="px-4 py-3 rounded-lg bg-teal-500/10 border border-teal-500/30 text-teal-400 text-sm text-center mb-4">
-            ✓ Report submitted successfully. The URL has been logged for
-            investigation.
-          </div>
-        ) : null}
-
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-800 transition text-sm"
-          >
-            {submitted ? "Close" : "Cancel"}
-          </button>
-          {!submitted && (
-            <button
-              onClick={() => onSubmit({ url: scan.url, agency, note })}
-              className="flex-1 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition text-sm"
-            >
-              Submit Report
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Reports() {
-  const navigate = useNavigate();  // ← ADD THIS LINE
+  const navigate = useNavigate();
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
-  const [reportScan, setReportScan] = useState(null);
-  const [reportSubmitted, setReportSubmitted] = useState(false);
-  const [reportedIds, setReportedIds] = useState([]);
+  const [reporting, setReporting] = useState({});
+  const [reportedUrls, setReportedUrls] = useState({});
 
   const token = localStorage.getItem("token");
   const headers = {
@@ -154,11 +53,27 @@ export default function Reports() {
     Authorization: `Bearer ${token}`,
   };
 
+  // Fetch scans with report status embedded
   useEffect(() => {
     if (!token) return;
     fetch("http://127.0.0.1:8000/scans/all", { headers })
       .then((r) => r.json())
-      .then((data) => setScans(data.scans || []))
+      .then((data) => {
+        const scansData = data.scans || [];
+        setScans(scansData);
+        
+        // Build reportedUrls map from the scan data
+        const reportMap = {};
+        scansData.forEach(scan => {
+          if (scan.report_status) {
+            const normalizedUrl = scan.url?.trim().toLowerCase();
+            if (normalizedUrl) {
+              reportMap[normalizedUrl] = scan.report_status;
+            }
+          }
+        });
+        setReportedUrls(reportMap);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -188,13 +103,14 @@ export default function Reports() {
   // CSV export
   const handleExport = () => {
     const rows = [
-      ["URL", "Prediction", "Risk Score (%)", "Detection Reason", "Scanned At"],
+      ["URL", "Prediction", "Risk Score (%)", "Detection Reason", "Scanned At", "Report Status"],
       ...filtered.map((s) => [
         s.url,
         s.prediction,
         s.risk_score,
         s.reasons?.[0] || "—",
         s.scanned_at ? new Date(s.scanned_at).toLocaleString() : "—",
+        s.report_status || "Not Reported",
       ]),
     ];
     const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
@@ -207,17 +123,54 @@ export default function Reports() {
     URL.revokeObjectURL(url);
   };
 
-  const handleReportSubmit = async ({ url, agency, note }) => {
+  // Check if a URL has a resolved report
+  const isReportResolved = (scan) => {
+    return scan?.report_status === 'resolved';
+  };
+
+  // Check if a URL has any report (pending or resolved)
+  const isReported = (scan) => {
+    return scan?.report_status !== undefined && scan?.report_status !== null;
+  };
+
+  // Simplified report submission - just saves to database
+  const handleReportSubmit = async (scan) => {
+    if (!scan?.url) return;
+    const normalizedUrl = scan.url.trim().toLowerCase();
+    
+    // Prevent duplicate reports or if already resolved
+    if (isReported(scan) || isReportResolved(scan)) return;
+    
+    setReporting(prev => ({ ...prev, [normalizedUrl]: true }));
+    
     try {
       await fetch("http://127.0.0.1:8000/report", {
         method: "POST",
         headers,
-        body: JSON.stringify({ url, note: `[${agency}] ${note}` }),
+        body: JSON.stringify({ 
+          url: scan.url, 
+          note: `[Auto-report] ${scan.prediction} URL detected with ${Math.round(scan.risk_score)}% risk score. Reasons: ${scan.reasons?.join(', ') || 'N/A'}` 
+        }),
       });
-      setReportSubmitted(true);
-      setReportedIds((prev) => [...prev, url]);
-    } catch {
-      console.error("Report failed");
+      
+      // Update the scan in the local state with pending status
+      setScans(prevScans => 
+        prevScans.map(s => 
+          s.url === scan.url 
+            ? { ...s, report_status: 'pending' }
+            : s
+        )
+      );
+      
+      // Also update the reportedUrls map
+      setReportedUrls(prev => ({
+        ...prev,
+        [normalizedUrl]: 'pending'
+      }));
+    } catch (error) {
+      console.error("Report failed:", error);
+    } finally {
+      setReporting(prev => ({ ...prev, [normalizedUrl]: false }));
     }
   };
 
@@ -249,6 +202,9 @@ export default function Reports() {
     ...scansByDay.map((d) => d.phishing + d.legitimate + d.suspicious),
     1,
   );
+
+  // Get counts of resolved reports
+  const resolvedCount = scans.filter(s => s.report_status === 'resolved').length;
 
   return (
     <>
@@ -483,71 +439,96 @@ export default function Reports() {
             </p>
           ) : (
             <div className="divide-y divide-teal-500/10">
-              {filtered.map((scan, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition group"
-                >
-                  {/* Clickable area for navigation to scan details */}
+              {filtered.map((scan, i) => {
+                const isResolved = scan?.report_status === 'resolved';
+                const isReportedStatus = scan?.report_status !== undefined && scan?.report_status !== null;
+                const normalizedUrl = scan.url?.trim().toLowerCase();
+                const isReportingNow = reporting[normalizedUrl];
+                
+                // Determine if we should show the report button
+                // Only show for non-legitimate URLs that are NOT resolved
+                const showButton = scan.prediction !== "Legitimate" && !isResolved;
+                
+                let buttonText = "⚑ Report";
+                let buttonDisabled = false;
+                let buttonStyles = "border-orange-500/40 text-orange-400 hover:bg-orange-500/10";
+                
+                if (isReportingNow) {
+                  buttonText = "⏳ Reporting...";
+                  buttonDisabled = true;
+                  buttonStyles = "border-gray-700 text-gray-600 cursor-not-allowed";
+                } else if (isReportedStatus) {
+                  buttonText = "✓ Reported";
+                  buttonDisabled = true;
+                  buttonStyles = "border-gray-700 text-gray-600 cursor-not-allowed";
+                }
+                
+                return (
                   <div
-                    onClick={() => navigate(`/scan/${scan._id}`)}
-                    className="flex-1 min-w-0 mr-4 cursor-pointer"
+                    key={i}
+                    className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition group"
                   >
-                    <p className="text-sm font-mono text-gray-300 truncate group-hover:text-teal-400 transition">
-                      {scan.url}
-                    </p>
-                    {scan.reasons?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {scan.reasons.slice(0, 2).map((r, j) => (
-                          <span
-                            key={j}
-                            className="text-xs text-gray-500 bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-700"
-                          >
-                            {r.length > 50 ? r.substring(0, 50) + "..." : r}
-                          </span>
-                        ))}
-                        {scan.reasons.length > 2 && (
-                          <span className="text-xs text-gray-500 bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-700">
-                            +{scan.reasons.length - 2} more
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-600 mt-1">
-                      {scan.scanned_at
-                        ? new Date(scan.scanned_at).toLocaleString()
-                        : "—"}
-                    </p>
-                  </div>
+                    {/* Clickable area for navigation to scan details */}
+                    <div
+                      onClick={() => navigate(`/scan/${scan._id}`)}
+                      className="flex-1 min-w-0 mr-4 cursor-pointer"
+                    >
+                      <p className="text-sm font-mono text-gray-300 truncate group-hover:text-teal-400 transition">
+                        {scan.url}
+                      </p>
+                      {scan.reasons?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {scan.reasons.slice(0, 2).map((r, j) => (
+                            <span
+                              key={j}
+                              className="text-xs text-gray-500 bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-700"
+                            >
+                              {r.length > 50 ? r.substring(0, 50) + "..." : r}
+                            </span>
+                          ))}
+                          {scan.reasons.length > 2 && (
+                            <span className="text-xs text-gray-500 bg-gray-800/60 px-2 py-0.5 rounded-md border border-gray-700">
+                              +{scan.reasons.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-600 mt-1">
+                        {scan.scanned_at
+                          ? new Date(scan.scanned_at).toLocaleString()
+                          : "—"}
+                      </p>
+                    </div>
 
-                  {/* Action buttons - separate from clickable area */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <RiskBadge
-                      prediction={scan.prediction}
-                      risk={scan.risk_score}
-                    />
-                    {scan.prediction !== "Legitimate" && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation(); // Prevents navigation to details page
-                          setReportScan(scan);
-                          setReportSubmitted(false);
-                        }}
-                        disabled={reportedIds.includes(scan.url)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border transition ${
-                          reportedIds.includes(scan.url)
-                            ? "border-gray-700 text-gray-600 cursor-not-allowed"
-                            : "border-orange-500/40 text-orange-400 hover:bg-orange-500/10"
-                        }`}
-                      >
-                        {reportedIds.includes(scan.url)
-                          ? "✓ Reported"
-                          : "⚑ Report"}
-                      </button>
-                    )}
+                    {/* Action buttons - separate from clickable area */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <RiskBadge
+                        prediction={scan.prediction}
+                        risk={scan.risk_score}
+                      />
+                      {showButton && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!buttonDisabled) {
+                              handleReportSubmit(scan);
+                            }
+                          }}
+                          disabled={buttonDisabled}
+                          className={`text-xs px-3 py-1.5 rounded-lg border transition min-w-[90px] flex items-center justify-center ${buttonStyles}`}
+                        >
+                          {buttonText}
+                        </button>
+                      )}
+                      {isResolved && (
+                        <span className="text-xs px-3 py-1.5 rounded-lg border border-teal-500/30 text-teal-400 bg-teal-500/5 min-w-[90px] flex items-center justify-center">
+                          ✓ Resolved
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -556,10 +537,15 @@ export default function Reports() {
               <span>
                 Showing {filtered.length} of {scans.length} scans
               </span>
-              <span className="text-orange-400">
-                {scans.filter((s) => s.prediction !== "Legitimate").length}{" "}
-                threats detected
-              </span>
+              <div className="flex items-center gap-4">
+                <span className="text-orange-400">
+                  {scans.filter((s) => s.prediction !== "Legitimate").length}{" "}
+                  threats detected
+                </span>
+                <span className="text-teal-400">
+                  {resolvedCount} resolved
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -569,19 +555,6 @@ export default function Reports() {
           cybersecurity monitoring
         </p>
       </div>
-
-      {/* Report Modal */}
-      {reportScan && (
-        <ReportModal
-          scan={reportScan}
-          onClose={() => {
-            setReportScan(null);
-            setReportSubmitted(false);
-          }}
-          onSubmit={handleReportSubmit}
-          submitted={reportSubmitted}
-        />
-      )}
     </>
   );
 }
