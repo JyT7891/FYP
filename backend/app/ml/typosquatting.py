@@ -3,7 +3,6 @@ from urllib.parse import urlparse
 
 TOP_DOMAINS = []
 
-
 def extract_domain(url: str) -> str:
     if not url.startswith("http"):
         url = "http://" + url

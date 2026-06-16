@@ -37,3 +37,8 @@ class ResetPasswordRequest(BaseModel):
 class VerifyRegistrationRequest(BaseModel):
     user_id: str
     code: str
+
+# app/models.py - Add this class
+class VerifyRegistrationRequest(BaseModel):
+    user_id: str
+    code: str
