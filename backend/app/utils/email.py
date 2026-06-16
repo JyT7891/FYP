@@ -4,7 +4,59 @@ from email.mime.multipart import MIMEMultipart
 
 from app.config import settings
 
+
+def send_verification_code_email(email: str, code: str, name: str):
+    """Send 6-digit verification code email"""
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #0a192f, #020c1b); padding: 20px; text-align: center; }}
+            .header h1 {{ color: #2dd4bf; }}
+            .code {{ font-size: 36px; font-weight: bold; text-align: center; padding: 20px; background: #f4f4f4; border-radius: 8px; letter-spacing: 5px; color: #333; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header"><h1>🛡️ AegisPhish</h1></div>
+            <div class="content">
+                <h2>Welcome, {name}!</h2>
+                <p>Your verification code is:</p>
+                <div class="code">{code}</div>
+                <p>This code expires in <strong>10 minutes</strong>.</p>
+                <p>If you didn't request this, please ignore this email.</p>
+                <hr>
+                <p style="font-size: 12px; color: #666;">AegisPhish - Protecting you from phishing attacks</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    msg = MIMEMultipart()
+    msg["Subject"] = "Verify Your AegisPhish Account"
+    msg["From"] = settings.SMTP_USER
+    msg["To"] = email
+    msg.attach(MIMEText(html, "html"))
+    
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(msg)
+        print(f"✅ Verification code email sent to {email}")
+        return True
+    except Exception as e:
+        print(f"❌ Email error: {e}")
+        return False
+
+
+# Keep the original function for backward compatibility
 def send_verification_email(email: str, token: str, name: str):
+    """Original verification email with link (kept for backward compatibility)"""
     verification_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
     
     html = f"""

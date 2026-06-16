@@ -12,12 +12,15 @@ from email.mime.multipart import MIMEMultipart
 
 from app.config import settings
 from app.database import users_collection
-from app.models import RegisterRequest, LoginRequest, ForgotPasswordRequest, ResetPasswordRequest
+from app.models import RegisterRequest, LoginRequest, ForgotPasswordRequest, ResetPasswordRequest, VerifyRegistrationRequest
 from app.utils.security import create_token, decode_token, verify_password, hash_password
-from app.utils.email import send_verification_email  # Use your existing email function
+from app.utils.email import send_verification_code_email
 
 router = APIRouter()
 security = HTTPBearer()
+
+# Temporary storage for verification codes (in production, use Redis or database)
+verification_codes = {}
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     return decode_token(credentials.credentials)
@@ -79,37 +82,96 @@ def send_password_reset_email(email: str, token: str, name: str):
 
 @router.post("/register")
 def register(data: RegisterRequest):
+    """Step 1: Register - Send verification code to email"""
     if users_collection.find_one({"email": data.email}):
         raise HTTPException(status_code=400, detail="Email already in use.")
     
     if len(data.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
     
-    verification_token = str(uuid.uuid4())
-    hashed = hash_password(data.password)
+    # Generate 6-digit verification code
+    verification_code = str(random.randint(100000, 999999))
     
-    result = users_collection.insert_one({
+    # Store user data temporarily with verification code
+    temp_user = {
         "name": data.name,
         "email": data.email,
-        "password": hashed,
-        "role": data.role,
+        "password": hash_password(data.password),
+        "verification_code": verification_code,
+        "code_expires": datetime.utcnow() + timedelta(minutes=10)
+    }
+    
+    # Store in temporary storage
+    verification_codes[data.email] = temp_user
+    
+    # Send verification email with 6-digit code
+    send_verification_code_email(data.email, verification_code, data.name)
+    
+    return {"message": "Verification code sent", "user_id": data.email}
+
+
+@router.post("/verify-registration")
+def verify_registration(data: VerifyRegistrationRequest):
+    """Step 2: Verify registration with 6-digit code"""
+    temp_user = verification_codes.get(data.user_id)
+    if not temp_user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification session")
+    
+    if temp_user["verification_code"] != data.code:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+    
+    if datetime.utcnow() > temp_user["code_expires"]:
+        del verification_codes[data.user_id]
+        raise HTTPException(status_code=400, detail="Verification code expired. Please register again.")
+    
+    # Create actual user in database
+    result = users_collection.insert_one({
+        "name": temp_user["name"],
+        "email": temp_user["email"],
+        "password": temp_user["password"],
+        "role": "user",
         "avatar": "",
-        "email_verified": False,
-        "verification_token": verification_token,
-        "token_expires": datetime.utcnow() + timedelta(hours=24),
+        "email_verified": True,  # Already verified via code
         "created_at": datetime.utcnow(),
     })
     
-    send_verification_email(data.email, verification_token, data.name)
-    token = create_token(str(result.inserted_id), data.role)
+    # Clean up temp storage
+    del verification_codes[data.user_id]
+    
+    token = create_token(str(result.inserted_id), "user")
     
     return {
         "token": token,
-        "role": data.role,
-        "name": data.name,
+        "role": "user",
+        "name": temp_user["name"],
+        "email": temp_user["email"],
         "avatar": "",
-        "email_verified": False,
+        "email_verified": True,
+        "user_id": str(result.inserted_id),
     }
+
+
+@router.post("/resend-verification-code")
+def resend_verification_code(data: dict):
+    """Resend verification code"""
+    email = data.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    
+    temp_user = verification_codes.get(email)
+    if not temp_user:
+        raise HTTPException(status_code=400, detail="No pending registration found")
+    
+    # Generate new verification code
+    new_code = str(random.randint(100000, 999999))
+    temp_user["verification_code"] = new_code
+    temp_user["code_expires"] = datetime.utcnow() + timedelta(minutes=10)
+    verification_codes[email] = temp_user
+    
+    # Send new verification email
+    send_verification_code_email(email, new_code, temp_user["name"])
+    
+    return {"message": "New verification code sent"}
 
 
 @router.post("/login")
@@ -130,7 +192,7 @@ def login(data: LoginRequest):
 
 @router.get("/verify-email")
 def verify_email(token: str):
-    """Verify user email with token"""
+    """Verify user email with token (kept for backward compatibility)"""
     from bson import ObjectId
     
     user = users_collection.find_one({
@@ -151,7 +213,7 @@ def verify_email(token: str):
 
 @router.post("/resend-verification")
 def resend_verification(current_user: dict = Depends(get_current_user)):
-    """Resend verification email to user"""
+    """Resend verification email to user (kept for backward compatibility)"""
     from bson import ObjectId
     
     user = users_collection.find_one({"_id": ObjectId(current_user["sub"])})
@@ -170,7 +232,7 @@ def resend_verification(current_user: dict = Depends(get_current_user)):
         }}
     )
     
-    send_verification_email(user["email"], verification_token, user["name"])
+    send_verification_code_email(user["email"], verification_token, user["name"])
     
     return {"message": "Verification email sent successfully"}
 

@@ -390,23 +390,6 @@ export default function Register() {
             )}
           </div>
 
-          {/* Role Selection */}
-          <div className="flex gap-4 mb-6">
-            {["user", "admin"].map((r) => (
-              <button
-                key={r}
-                onClick={() => setRole(r)}
-                className={`flex-1 py-3 rounded-lg border transition hover:bg-teal-500/10 capitalize ${
-                  role === r
-                    ? "border-teal-400 bg-teal-500/10"
-                    : "border-gray-600 hover:border-teal-400"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-
           {/* Full Name */}
           <InputField
             label="Full name"

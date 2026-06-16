@@ -5,6 +5,7 @@ import uuid
 
 from app.models import URLRequest
 from app.database import scans_collection
+from app.auth import get_current_user
 from app.ml.model import rf, scaler
 from app.ml.features import extract_url_features, prepare_input, get_shap_explanation, explain_features
 from app.ml.reputation import get_reputation_score
@@ -26,31 +27,16 @@ def get_or_create_session_id(request: Request) -> str:
 
 @router.post("/predict")
 def predict(
-    request: Request,
     data: URLRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    current_user: dict = Depends(get_current_user)
 ):
-    """Analyze a URL for phishing detection (supports optional auth)"""
+    """Analyze a URL for phishing detection (authentication required)"""
     try:
         url = data.url
+        user_id = current_user.get("sub")
+        
         reputation_score = get_reputation_score(url)
         typo_detected = is_typosquatting(url)
-        
-        # Try to get user_id from token if present
-        user_id = None
-        if credentials:
-            try:
-                token = credentials.credentials
-                payload = decode_token(token)
-                user_id = payload.get("sub")
-                print(f"✅ Authenticated user: {user_id}")
-            except Exception as e:
-                print(f"⚠️ Auth failed: {e}")
-        
-        # If not logged in, use session ID
-        if not user_id:
-            user_id = get_or_create_session_id(request)
-            print(f"🆔 Anonymous user with session: {user_id}")
 
         # High reputation domain check
         if reputation_score <= settings.TRUST_REPUTATION_THRESHOLD and not typo_detected:
@@ -101,7 +87,7 @@ def predict(
             "reasons": reasons,
         }
 
-        # Save scan with user_id (either actual user ID or session ID)
+        # Save scan with authenticated user ID
         insert_result = scans_collection.insert_one({
             **result,
             "user_id": user_id,
@@ -110,6 +96,9 @@ def predict(
         result["_id"] = str(insert_result.inserted_id)
 
         return result
+
+    except Exception as e:
+        return {"error": str(e)}
 
     except Exception as e:
         print(f"❌ Prediction error: {e}")
