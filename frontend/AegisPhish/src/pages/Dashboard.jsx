@@ -196,7 +196,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Scan Result - Clickable like Profile page */}
+          {/* Scan Result */}
           {scanResult && (
             <div
               onClick={() =>

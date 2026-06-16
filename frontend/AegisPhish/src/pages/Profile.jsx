@@ -226,7 +226,7 @@ export default function Profile() {
 
         // Start resend timer
         setResendDisabled(true);
-        setResendTimer(60);
+        setResendTimer(30);
         const timer = setInterval(() => {
           setResendTimer((prev) => {
             if (prev <= 1) {

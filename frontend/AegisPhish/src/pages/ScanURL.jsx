@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function RiskGauge({ score, prediction }) {
   const color =
@@ -74,16 +75,19 @@ function ShapBar({ feature, value, maxVal }) {
 }
 
 export default function ScanURL() {
+  const navigate = useNavigate();
   const [scanInput, setScanInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [reportSent, setReportSent] = useState(false);
 
-  const token = localStorage.getItem("token");
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+  const getHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
   };
 
   const handleScan = async () => {
@@ -96,9 +100,16 @@ export default function ScanURL() {
     try {
       const res = await fetch("http://127.0.0.1:8000/predict", {
         method: "POST",
-        headers,
+        headers: getHeaders(),
         body: JSON.stringify({ url: scanInput }),
       });
+
+      if (res.status === 401) {
+        localStorage.clear();
+        window.location.href = "/";
+        return;
+      }
+
       const data = await res.json();
       if (data.error) { setError(data.error); return; }
       setResult(data);
@@ -109,33 +120,21 @@ export default function ScanURL() {
     }
   };
 
-  const handleReport = async () => {
-    if (!result) return;
-    try {
-      await fetch("http://127.0.0.1:8000/report", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ url: result.url, note: "Reported by user as phishing" }),
-      });
-      setReportSent(true);
-      setTimeout(() => setReportSent(false), 3000);
-    } catch {
-      setError("Failed to submit report.");
-    }
-  };
-
   const handleRescan = async () => {
+    if (!result) return;
     setScanning(true);
+    setError("");
+    setReportSent(false);
+
     try {
       const res = await fetch("http://127.0.0.1:8000/predict", {
         method: "POST",
-        headers,
-        body: JSON.stringify({ url: scanInput }),
+        headers: getHeaders(),
+        body: JSON.stringify({ url: result.url }),
       });
       const data = await res.json();
       if (data.error) { setError(data.error); return; }
       setResult(data);
-      setReportSent(false);
     } catch {
       setError("Could not connect to server.");
     } finally {
@@ -143,7 +142,26 @@ export default function ScanURL() {
     }
   };
 
-  // Prepare SHAP data sorted by absolute value
+  const handleReport = async () => {
+    if (!result) return;
+    try {
+      const res = await fetch("http://127.0.0.1:8000/report", {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          url: result.url,
+          note: `Reported from scan details. Prediction: ${result.prediction}, Risk score: ${result.risk_score}%`,
+        }),
+      });
+      if (res.ok) {
+        setReportSent(true);
+        setTimeout(() => setReportSent(false), 3000);
+      }
+    } catch {
+      setError("Failed to submit report.");
+    }
+  };
+
   const shapEntries = result?.shap_values
     ? Object.entries(result.shap_values)
         .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
@@ -153,28 +171,42 @@ export default function ScanURL() {
 
   return (
     <>
-      <header className="border-b border-teal-500/20 px-6 py-4 flex items-center justify-between bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
-        <div>
-          <h1 className="text-base font-semibold">Scan URL</h1>
-          <p className="text-xs text-gray-500">Deep phishing analysis</p>
-        </div>
-        <div className="flex gap-2">
-          {result && (
-            <button
-              onClick={handleRescan}
-              className="px-4 py-2 rounded-lg border border-teal-500/40 text-teal-400 text-sm hover:bg-teal-500/10 transition"
-            >
-              ⟳ Rescan URL
-            </button>
-          )}
-          <span className="flex items-center gap-1.5 text-xs text-teal-400 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-full">
-            <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></span>
-            Protected
-          </span>
+      {/* Header — mirrors ScanDetails */}
+      <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-base font-semibold">Scan URL</h1>
+            <p className="text-xs text-gray-500">Deep phishing analysis</p>
+          </div>
+          <div className="flex gap-2">
+            {result && (
+              <button
+                onClick={handleRescan}
+                disabled={scanning}
+                className="px-4 py-2 rounded-lg border border-teal-500/40 text-teal-400 text-sm hover:bg-teal-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ⟳ Rescan URL
+              </button>
+            )}
+            {result && result.prediction !== "Legitimate" && (
+              <button
+                onClick={handleReport}
+                disabled={reportSent}
+                className="px-4 py-2 rounded-lg border border-orange-500/40 text-orange-400 text-sm hover:bg-orange-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reportSent ? "✓ Reported" : "⚑ Report"}
+              </button>
+            )}
+            <span className="flex items-center gap-1.5 text-xs text-teal-400 bg-teal-500/10 border border-teal-500/30 px-3 py-1.5 rounded-full">
+              <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"></span>
+              Protected
+            </span>
+          </div>
         </div>
       </header>
 
       <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
+
         {/* URL Input */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">Enter URL to Analyse</p>
@@ -212,19 +244,17 @@ export default function ScanURL() {
           </div>
         )}
 
-        {/* Results */}
+        {/* Results — identical structure to ScanDetails */}
         {result && (
           <>
-            {/* URL Section */}
+            {/* Scanned URL — same as ScanDetails */}
             <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
               <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">Scanned URL</p>
               <p className="font-mono text-sm text-gray-200 break-all">{result.url}</p>
-              <p className="text-xs text-gray-600 mt-3">
-                Analysed just now
-              </p>
+              <p className="text-xs text-gray-600 mt-3">Analysed just now</p>
             </div>
 
-            {/* Result Row: Gauge + Summary */}
+            {/* Gauge + Summary — identical to ScanDetails */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <RiskGauge score={result.risk_score || 0} prediction={result.prediction || "Legitimate"} />
 
@@ -243,22 +273,9 @@ export default function ScanURL() {
                     <p className="text-xl font-semibold text-white">{result.risk_score?.toFixed(2) || "—"}%</p>
                   </div>
                 </div>
-                
-                {/* Report button moved here (beside risk score area) */}
-                {result.prediction !== "Legitimate" && (
-                  <div className="mt-3">
-                    <button
-                      onClick={handleReport}
-                      disabled={reportSent}
-                      className="px-4 py-2 rounded-lg border border-orange-500/40 text-orange-400 text-sm hover:bg-orange-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {reportSent ? "✓ Reported" : "⚑ Report this URL"}
-                    </button>
-                  </div>
-                )}
-                
+
                 {result.reasons && result.reasons.length > 0 && (
-                  <div className="mt-4">
+                  <div>
                     <p className="text-xs text-gray-500 mb-2">Key Indicators</p>
                     <div className="space-y-1">
                       {result.reasons.slice(0, 3).map((reason, i) => (
@@ -273,7 +290,7 @@ export default function ScanURL() {
               </div>
             </div>
 
-            {/* All Detection Reasons */}
+            {/* Detection Reasons — identical to ScanDetails */}
             {result.reasons && result.reasons.length > 0 && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">Detection Reasons</p>
@@ -288,7 +305,7 @@ export default function ScanURL() {
               </div>
             )}
 
-            {/* SHAP Feature Importance */}
+            {/* SHAP Feature Importance — identical to ScanDetails */}
             {shapEntries.length > 0 && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
@@ -315,7 +332,7 @@ export default function ScanURL() {
               </div>
             )}
 
-            {/* URL Structure Analysis */}
+            {/* URL Structure Analysis — identical to ScanDetails */}
             {result.url && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">URL Structure Analysis</p>
@@ -338,6 +355,26 @@ export default function ScanURL() {
                 </div>
               </div>
             )}
+
+            {/* Action Buttons — identical to ScanDetails */}
+            <div className="flex gap-4 justify-end pt-4">
+              <button
+                onClick={handleRescan}
+                disabled={scanning}
+                className="px-5 py-2.5 rounded-lg border border-teal-500/40 bg-teal-500/10 text-teal-400 text-sm hover:bg-teal-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ⟳ Rescan URL
+              </button>
+              {result.prediction !== "Legitimate" && (
+                <button
+                  onClick={handleReport}
+                  disabled={reportSent}
+                  className="px-5 py-2.5 rounded-lg border border-orange-500/40 bg-orange-500/10 text-orange-400 text-sm hover:bg-orange-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {reportSent ? "✓ Reported" : "⚑ Report to Authorities"}
+                </button>
+              )}
+            </div>
           </>
         )}
 
