@@ -189,28 +189,6 @@ def login(data: LoginRequest):
         "email_verified": user.get("email_verified", False),
     }
 
-
-@router.get("/verify-email")
-def verify_email(token: str):
-    """Verify user email with token (kept for backward compatibility)"""
-    from bson import ObjectId
-    
-    user = users_collection.find_one({
-        "verification_token": token,
-        "token_expires": {"$gt": datetime.utcnow()}
-    })
-    
-    if not user:
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
-    
-    users_collection.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"email_verified": True}, "$unset": {"verification_token": "", "token_expires": ""}}
-    )
-    
-    return {"message": "Email verified successfully"}
-
-
 @router.post("/resend-verification")
 def resend_verification(current_user: dict = Depends(get_current_user)):
     """Resend verification email to user (kept for backward compatibility)"""

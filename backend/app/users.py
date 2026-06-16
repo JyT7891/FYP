@@ -1,6 +1,7 @@
 import os
 import uuid
 import shutil
+import random
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from bson import ObjectId
 from datetime import datetime, timedelta
@@ -9,31 +10,118 @@ from app.database import users_collection, scans_collection, reports_collection
 from app.models import ProfileUpdateRequest, PasswordUpdateRequest
 from app.auth import get_current_user
 from app.utils.security import hash_password, verify_password
-from app.utils.email import send_verification_email
+from app.utils.email import send_verification_code_email
 
 router = APIRouter()
+
+# Temporary storage for profile email verification codes
+profile_verification_codes = {}
 
 
 @router.patch("/profile")
 def update_profile(data: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
     update = {}
+    email_changed = False
+    
     if data.name.strip():
         update["name"] = data.name.strip()
+    
     if data.email.strip():
+        # Check email not taken by another user
         existing = users_collection.find_one({"email": data.email})
         if existing and str(existing["_id"]) != current_user["sub"]:
             raise HTTPException(status_code=400, detail="Email already in use.")
+        
         update["email"] = data.email.strip()
         update["email_verified"] = False
-        update["verification_token"] = str(uuid.uuid4())
-        update["token_expires"] = datetime.utcnow() + timedelta(hours=24)
-        send_verification_email(data.email.strip(), update["verification_token"], data.name.strip() if data.name.strip() else current_user.get("name", "User"))
+        email_changed = True
+        
+        # Generate 6-digit verification code
+        verification_code = str(random.randint(100000, 999999))
+        
+        # Store in profile verification storage
+        profile_verification_codes[current_user["sub"]] = {
+            "email": data.email.strip(),
+            "code": verification_code,
+            "expires": datetime.utcnow() + timedelta(minutes=10),
+            "name": data.name.strip() if data.name.strip() else current_user.get("name", "User")
+        }
+        
+        # Send verification code email (6-digit code)
+        send_verification_code_email(
+            data.email.strip(), 
+            verification_code, 
+            data.name.strip() if data.name.strip() else current_user.get("name", "User")
+        )
     
     if not update:
         raise HTTPException(status_code=400, detail="Nothing to update.")
     
     users_collection.update_one({"_id": ObjectId(current_user["sub"])}, {"$set": update})
-    return {"message": "Profile updated."}
+    return {"message": "Profile updated.", "email_changed": email_changed}
+
+
+@router.post("/verify-email-change")
+def verify_email_change(data: dict, current_user: dict = Depends(get_current_user)):
+    """Verify email change with 6-digit code"""
+    from bson import ObjectId
+    
+    code = data.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="Code is required")
+    
+    # Get the pending verification for this user
+    pending = profile_verification_codes.get(current_user["sub"])
+    if not pending:
+        raise HTTPException(status_code=400, detail="No pending email verification. Please request a new code.")
+    
+    # Check if code expired
+    if datetime.utcnow() > pending["expires"]:
+        del profile_verification_codes[current_user["sub"]]
+        raise HTTPException(status_code=400, detail="Verification code expired. Please request a new code.")
+    
+    # Check if code matches
+    if pending["code"] != code:
+        raise HTTPException(status_code=400, detail="Invalid verification code. Please try again.")
+    
+    # Update user's email_verified to True
+    users_collection.update_one(
+        {"_id": ObjectId(current_user["sub"])},
+        {"$set": {"email_verified": True}}
+    )
+    
+    # Clean up
+    del profile_verification_codes[current_user["sub"]]
+    
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-profile-verification")
+def resend_profile_verification(current_user: dict = Depends(get_current_user)):
+    """Resend verification code for profile email change"""
+    from bson import ObjectId
+    
+    # Get the pending verification for this user
+    pending = profile_verification_codes.get(current_user["sub"])
+    if not pending:
+        raise HTTPException(status_code=400, detail="No pending email verification. Please change your email again.")
+    
+    # Generate new 6-digit verification code
+    new_code = str(random.randint(100000, 999999))
+    
+    # Update the pending verification
+    pending["code"] = new_code
+    pending["expires"] = datetime.utcnow() + timedelta(minutes=10)
+    profile_verification_codes[current_user["sub"]] = pending
+    
+    # Send new verification code email
+    send_verification_code_email(
+        pending["email"], 
+        new_code, 
+        pending.get("name", "User")
+    )
+    
+    return {"message": "New verification code sent successfully"}
 
 
 @router.patch("/password")
