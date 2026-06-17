@@ -92,7 +92,6 @@ export default function AdminDashboard() {
   const [pendingReports, setPendingReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("role");
@@ -112,7 +111,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       console.log("📊 Fetching admin data...");
-      
+
       // Use Promise.all for parallel requests (faster)
       const [statsRes, scansRes, reportsRes] = await Promise.all([
         fetch("http://127.0.0.1:8000/admin/stats", { headers }),
@@ -141,18 +140,12 @@ export default function AdminDashboard() {
       console.error("Failed to fetch admin data:", error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
   useEffect(() => {
     fetchData();
   }, []);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchData();
-  };
 
   const handleResolveReport = async (reportId) => {
     setResolving(true);
@@ -165,10 +158,10 @@ export default function AdminDashboard() {
           headers,
         }
       );
-      
+
       const data = await res.json();
       console.log("📊 Resolve response:", data);
-      
+
       if (res.ok) {
         // Remove from local state
         setPendingReports((prev) => prev.filter((r) => r._id !== reportId));
@@ -198,10 +191,10 @@ export default function AdminDashboard() {
           headers,
         }
       );
-      
+
       const data = await res.json();
       console.log("📊 Dismiss response:", data);
-      
+
       if (res.ok) {
         // Remove from local state
         setPendingReports((prev) => prev.filter((r) => r._id !== reportId));
@@ -260,11 +253,21 @@ export default function AdminDashboard() {
           <h1 className="text-base font-semibold">Admin Dashboard</h1>
           <p className="text-xs text-gray-500">System overview & management</p>
         </div>
-        {/* Removed Refresh, Clear Cache, and Logout buttons */}
-        <span className="flex items-center gap-1.5 text-xs text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 rounded-full">
-          <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></span>
-          Admin
-        </span>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleClearCache}
+            className="text-xs px-3 py-1.5 rounded-lg border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition"
+          >
+            🗑️ Clear Cache
+          </button>
+
+          <span className="flex items-center gap-1.5 text-xs text-purple-400 bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 rounded-full">
+            <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></span>
+            Admin
+          </span>
+        </div>
       </header>
 
       {/* Main Content */}
