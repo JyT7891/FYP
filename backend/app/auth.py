@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import re
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import bcrypt
@@ -225,7 +226,46 @@ def check_email_exists(email: str):
 @router.post("/forgot-password")
 def forgot_password(data: ForgotPasswordRequest):
     """Send password reset email"""
-    user = users_collection.find_one({"email": data.email})
+    
+    # Validate email format
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, data.email):
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a valid email address."
+        )
+    
+    email = data.email.lower()
+    user = users_collection.find_one({"email": email})
+    
+    if not user:
+        # For development/testing - return different message
+        return {"message": "Email not found in our system.", "success": False}
+    
+    # Generate reset token
+    reset_token = secrets.token_urlsafe(32)
+    users_collection.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "reset_token": reset_token,
+            "reset_token_expires": datetime.utcnow() + timedelta(hours=1)
+        }}
+    )
+    
+    send_password_reset_email(email, reset_token, user["name"])
+    
+    return {"message": "Password reset email sent! Please check your inbox.", "success": True}
+    """Send password reset email"""
+    
+    # Email validation
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, data.email):
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a valid email address."
+        )
+    
+    user = users_collection.find_one({"email": data.email.lower()})
     
     if not user:
         return {"message": "If your email is registered, you will receive a reset link."}
