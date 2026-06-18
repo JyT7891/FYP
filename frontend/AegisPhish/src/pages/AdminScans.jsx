@@ -240,8 +240,7 @@ export default function AdminScans() {
         </div>
       </header>
       <div className="p-8">
-        // Statistics overview cards section
-        {/* Stats Cards */}
+        {/* // Statistics overview cards section */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <div className="rounded-xl border border-purple-500/20 bg-gradient-to-b from-[#0f0f23] to-[#0a0a1a] p-4">
             <p className="text-xs text-gray-500">Total Scans</p>
@@ -270,9 +269,7 @@ export default function AdminScans() {
             </p>
           </div>
         </div>
-        // Filters and search controls section
         {/* Filters Bar */}
-        // Filters container layout
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <div className="flex gap-1">
             {["All", "Phishing", "Suspicious", "Legitimate"].map((f) => (
@@ -333,8 +330,7 @@ export default function AdminScans() {
             🔄 Refresh
           </button>
         </div>
-        // Bulk actions section for selected scans
-        {/* Bulk Actions Bar */}
+        {/* Bulk actions section for selected scans */}
         {selectedScans.size > 0 && (
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg px-4 py-2 mb-4 flex items-center justify-between">
             <span className="text-sm text-purple-400">
@@ -358,7 +354,6 @@ export default function AdminScans() {
             </div>
           </div>
         )}
-        // Scans data table section
         {/* Scans Table */}
         {loading ? (
           <p className="text-gray-500 text-center py-12">Loading scans...</p>
@@ -479,7 +474,6 @@ export default function AdminScans() {
           </div>
         )}
       </div>
-      // Scan details modal
       {/* View Scan Details Modal */}
       {showViewModal && selectedScan && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">

@@ -387,7 +387,7 @@ export default function Register() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#020c1b] text-white px-4 py-10">
         <div className="w-full max-w-[480px] p-8 rounded-2xl border border-teal-500/30 bg-gradient-to-b from-[#0a192f] to-[#020c1b] shadow-lg">
-          // Application logo section
+          {/* Application logo section */}
           <div className="flex justify-center gap-4 mb-6">
             <div className="w-12 h-12 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
               <div className="w-6 h-6 border-2 border-white rounded"></div>
@@ -401,14 +401,14 @@ export default function Register() {
               </p>
             </div>
           </div>
-          // Page heading section
+          {/* Page heading section*/}
           <div className="text-center mb-6">
             <h2 className="text-xl font-semibold">Create an account</h2>
             <p className="text-gray-400 text-sm">
               Join AegisPhish and stay protected
             </p>
           </div>
-          // Avatar upload section
+           {/* Avatar upload section */}
           <div className="mb-6 flex flex-col items-center">
             <label className="text-sm text-gray-300 mb-2">
               Profile Picture
@@ -472,7 +472,7 @@ export default function Register() {
               </p>
             )}
           </div>
-          // Full name input field
+          {/* Full name input field*/}
           <InputField
             label="Full name"
             placeholder="Jane Doe"
@@ -481,7 +481,7 @@ export default function Register() {
             onKeyDown={handleKey}
             error={errors.name}
           />
-          // Email input field
+          {/* Email input field */}
           <InputField
             label="Email address"
             type="email"
@@ -491,7 +491,7 @@ export default function Register() {
             onKeyDown={handleKey}
             error={errors.email}
           />
-          // Password input field with strength indicator
+          {/* Password input field with strength indicator */}
           <InputField
             label="Password"
             type="password"
@@ -503,7 +503,7 @@ export default function Register() {
           >
             <StrengthBar password={form.password} />
           </InputField>
-          // Confirm password input field
+          {/* Confirm password input field */}
           <InputField
             label="Confirm password"
             type="password"
@@ -513,13 +513,13 @@ export default function Register() {
             onKeyDown={handleKey}
             error={errors.confirm}
           />
-          // Global error message display
+          {/* Global error message display */}
           {globalError && (
             <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
               {globalError}
             </div>
           )}
-          // Registration submit button
+          {/* Registration submit button */}
           <button
             onClick={handleRegister}
             disabled={loading}
@@ -527,14 +527,14 @@ export default function Register() {
           >
             {loading ? "Creating account..." : "Create account"}
           </button>
-          // Navigation back to login page
+          {/* Navigation back to login page */}
           <button
             onClick={() => navigate("/")}
             className="w-full mt-3 py-3 rounded-lg border border-gray-500 hover:bg-teal-500/10 hover:border-teal-400 transition text-sm text-gray-400"
           >
             Already have an account? Sign in
           </button>
-          // Page footer section
+          {/* Page footer section */}
           <div className="text-center mt-6 text-xs text-gray-500">
             <p className="mb-2">secured by AegisPhish</p>
             <p className="text-teal-400">
@@ -550,7 +550,7 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#020c1b] text-white px-4 py-10">
       <div className="w-full max-w-[420px] p-8 rounded-2xl border border-teal-500/30 bg-gradient-to-b from-[#0a192f] to-[#020c1b] shadow-lg">
-        // Application logo section
+        {/* Application logo section */}
         <div className="flex justify-center gap-4 mb-6">
           <div className="w-12 h-12 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
             <div className="w-6 h-6 border-2 border-white rounded"></div>
@@ -564,7 +564,7 @@ export default function Register() {
             </p>
           </div>
         </div>
-        // Page heading section
+        {/* Page heading section */}
         <div className="text-center mb-6">
           <h2 className="text-xl font-semibold">Verify Your Email</h2>
           <p className="text-gray-400 text-sm mt-2">
@@ -572,7 +572,7 @@ export default function Register() {
           </p>
           <p className="text-teal-400 text-sm font-medium mt-1">{form.email}</p>
         </div>
-        // Verification code input field
+        {/* Verification code input field */}
         <div className="mb-4">
           <label className="text-sm text-gray-300">Verification Code</label>
           <input
@@ -589,13 +589,13 @@ export default function Register() {
             maxLength={6}
           />
         </div>
-        // Verification error message display
+        {/* Verification error message display */}
         {globalError && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
             {globalError}
           </div>
         )}
-        // Email verification submit button
+        {/* Email verification submit button */}
         <button
           onClick={handleVerifyEmail}
           disabled={loading || verificationCode.length !== 6}
@@ -603,7 +603,7 @@ export default function Register() {
         >
           {loading ? "Verifying..." : "Verify Email"}
         </button>
-        // Resend verification code button
+        {/* Resend verification code button */}
         <div className="text-center mt-4">
           <button
             onClick={handleResendCode}
@@ -615,7 +615,7 @@ export default function Register() {
               : "Didn't receive code? Resend"}
           </button>
         </div>
-        // Back to registration step button
+        {/* Back to registration step button */}
         <button
           onClick={() => {
             setStep("register");
@@ -625,7 +625,7 @@ export default function Register() {
         >
           Back to Registration
         </button>
-        // Verification page footer section
+        {/* Verification page footer section */}
         <div className="text-center mt-6 text-xs text-gray-500">
           <p className="mb-2">secured by AegisPhish</p>
           <p className="text-teal-400">

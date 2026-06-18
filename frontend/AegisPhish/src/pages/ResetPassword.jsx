@@ -177,26 +177,26 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#020c1b] text-white">
       <div className="w-full max-w-[420px] p-8 rounded-2xl border border-teal-500/30 bg-gradient-to-b from-[#0a192f] to-[#020c1b] shadow-lg">
-        // Page header section
+        {/* Page header section */}
         <div className="text-center mb-6">
           <h2 className="text-xl font-semibold">Reset Password</h2>
           <p className="text-gray-400 text-sm mt-2">
             Enter your new password below.
           </p>
         </div>
-        // Error message display
+        {/* Error message display */}
         {error && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center">
             {error}
           </div>
         )}
-        // Success message display
+        {/* Success message display */}
         {message && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-teal-500/10 border border-teal-500/30 text-teal-400 text-sm text-center">
             {message}
           </div>
         )}
-        // New password input section
+        {/* New password input section */}
         <div className="mb-4">
           <label className="text-sm text-gray-300">New Password</label>
           <div className="relative mt-2">
@@ -217,7 +217,7 @@ export default function ResetPassword() {
           </div>
           <StrengthBar password={password} />
         </div>
-        // Confirm password input section
+        {/* Confirm password input section */}
         <div className="mb-6">
           <label className="text-sm text-gray-300">Confirm New Password</label>
           <div className="relative mt-2">
@@ -231,7 +231,7 @@ export default function ResetPassword() {
             />
           </div>
         </div>
-        // Submit reset password button
+        {/* Submit reset password button */}
         <button
           onClick={handleResetPassword}
           disabled={loading}
@@ -239,7 +239,7 @@ export default function ResetPassword() {
         >
           {loading ? "Resetting..." : "Reset Password"}
         </button>
-        // Navigate back to login page button
+        {/* Navigate back to login page button */}
         <button
           onClick={() => navigate("/")}
           className="w-full mt-3 py-3 rounded-lg border border-gray-500 hover:bg-teal-500/10 transition"

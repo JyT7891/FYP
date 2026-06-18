@@ -264,7 +264,7 @@ export default function AdminDashboard() {
   // Render admin dashboard UI
   return (
     <div className="min-h-screen bg-[#020c1b] text-white">
-      // Dashboard header section
+      {/* Dashboard header section */}
       <header className="border-b border-teal-500/20 px-6 py-4 flex items-center justify-between bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div>
           <h1 className="text-base font-semibold">Admin Dashboard</h1>
@@ -286,9 +286,9 @@ export default function AdminDashboard() {
           </span>
         </div>
       </header>
-      // Main dashboard content area
+      {/* Main dashboard content area */}
       <div className="p-8 space-y-6">
-        // System statistics overview cards
+        {/* System statistics overview cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard
             label="Total Users"
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
           />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          // Recent scans table section
+          {/* Recent scans table section */}
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
             <div className="px-5 py-4 border-b border-teal-500/20">
               <p className="text-xs text-gray-500 tracking-widest uppercase">
@@ -383,7 +383,7 @@ export default function AdminDashboard() {
               </button>
             </div>
           </div>
-          // Pending reports list section
+          {/* Pending reports list section */}
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
             <div className="px-5 py-4 border-b border-teal-500/20">
               <p className="text-xs text-gray-500 tracking-widest uppercase">

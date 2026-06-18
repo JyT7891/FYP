@@ -108,7 +108,6 @@ export default function Layout() {
   // Render sidebar, main layout, and logout modal
   return (
     <div className="min-h-screen bg-[#020c1b] text-white flex w-full">
-      // Sidebar navigation panel
       {/* Sidebar */}
       <aside className="w-16 md:w-56 flex flex-col border-r border-teal-500/20 bg-[#040d1a] shrink-0 h-screen sticky top-0">
         {/* Logo */}
@@ -120,7 +119,6 @@ export default function Layout() {
             AegisPhish
           </span>
         </div>
-        // Navigation buttons section
         {/* Nav */}
         <nav className="flex flex-col gap-1 p-2 mt-2 flex-1">
           {navItems.map((item) => (
@@ -138,7 +136,6 @@ export default function Layout() {
             </button>
           ))}
         </nav>
-        // User profile display and logout controls
         {/* User Section with Logout */}
         <div className="p-3 border-t border-teal-500/20">
           <div className="flex items-center gap-3 px-2 py-2 mb-2">
@@ -184,7 +181,6 @@ export default function Layout() {
           </button>
         </div>
       </aside>
-      // Logout confirmation modal overlay
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
@@ -211,7 +207,6 @@ export default function Layout() {
           </div>
         </div>
       )}
-      // Main routed content area
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto min-w-0 w-full">
         <Outlet />
