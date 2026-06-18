@@ -80,6 +80,7 @@ export default function ScanURL() {
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
   const [reportSent, setReportSent] = useState(false);
 
   const getHeaders = () => {
@@ -90,18 +91,65 @@ export default function ScanURL() {
     };
   };
 
+  // Validate URL format
+  const validateURL = (url) => {
+    if (!url || !url.trim()) {
+      return { valid: false, message: "Please enter a URL." };
+    }
+
+    const trimmedUrl = url.trim();
+    
+    let urlToCheck = trimmedUrl;
+    if (!urlToCheck.startsWith('http://') && !urlToCheck.startsWith('https://')) {
+      urlToCheck = 'https://' + urlToCheck;
+    }
+
+    try {
+      const urlObj = new URL(urlToCheck);
+      
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        return { valid: false, message: "Please enter a valid URL (http or https)." };
+      }
+      
+      if (!urlObj.hostname.includes('.')) {
+        return { valid: false, message: "Please enter a valid URL." };
+      }
+      
+      return { valid: true, url: trimmedUrl };
+    } catch {
+      return { valid: false, message: "Please enter a valid URL." };
+    }
+  };
+
+  // Handle input change with validation
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setScanInput(value);
+    if (validationError) {
+      setValidationError("");
+    }
+  };
+
   const handleScan = async () => {
-    if (!scanInput.trim()) return;
-    setScanning(true);
     setResult(null);
     setError("");
+    setValidationError("");
     setReportSent(false);
+
+    // Validate URL before scanning
+    const validation = validateURL(scanInput);
+    if (!validation.valid) {
+      setValidationError(validation.message);
+      return;
+    }
+
+    setScanning(true);
 
     try {
       const res = await fetch("http://127.0.0.1:8000/predict", {
         method: "POST",
         headers: getHeaders(),
-        body: JSON.stringify({ url: scanInput }),
+        body: JSON.stringify({ url: validation.url }),
       });
 
       if (res.status === 401) {
@@ -122,15 +170,24 @@ export default function ScanURL() {
 
   const handleRescan = async () => {
     if (!result) return;
-    setScanning(true);
+    setValidationError("");
     setError("");
     setReportSent(false);
+    
+    // Validate URL before rescanning
+    const validation = validateURL(result.url);
+    if (!validation.valid) {
+      setValidationError(validation.message);
+      return;
+    }
+
+    setScanning(true);
 
     try {
       const res = await fetch("http://127.0.0.1:8000/predict", {
         method: "POST",
         headers: getHeaders(),
-        body: JSON.stringify({ url: result.url }),
+        body: JSON.stringify({ url: validation.url }),
       });
       const data = await res.json();
       if (data.error) { setError(data.error); return; }
@@ -215,9 +272,11 @@ export default function ScanURL() {
               type="text"
               placeholder="https://example.com"
               value={scanInput}
-              onChange={(e) => setScanInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={(e) => e.key === "Enter" && handleScan()}
-              className="flex-1 bg-gray-800/60 border border-gray-600 rounded-lg px-4 py-3 text-sm outline-none focus:border-teal-400 transition placeholder-gray-600 font-mono"
+              className={`flex-1 bg-gray-800/60 border rounded-lg px-4 py-3 text-sm outline-none transition placeholder-gray-600 font-mono ${
+                validationError ? "border-red-500 focus:border-red-400" : "border-gray-600 focus:border-teal-400"
+              }`}
             />
             <button
               onClick={handleScan}
@@ -232,6 +291,14 @@ export default function ScanURL() {
               ) : "Analyse"}
             </button>
           </div>
+          
+          {/* Validation Error Message */}
+          {validationError && (
+            <div className="mt-3 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              ⚠ {validationError}
+            </div>
+          )}
+          
           <p className="text-xs text-gray-600 mt-3">
             Powered by Random Forest ML · VirusTotal · SHAP Explainability
           </p>
@@ -379,7 +446,7 @@ export default function ScanURL() {
         )}
 
         {/* Empty state */}
-        {!result && !scanning && !error && (
+        {!result && !scanning && !error && !validationError && (
           <div className="rounded-xl border border-teal-500/10 border-dashed p-12 text-center">
             <p className="text-4xl mb-4">⬡</p>
             <p className="text-gray-400 text-sm font-medium">Enter a URL above to run a full analysis</p>

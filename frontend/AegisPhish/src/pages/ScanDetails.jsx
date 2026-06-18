@@ -82,11 +82,42 @@ export default function ScanDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reportSent, setReportSent] = useState(false);
+  const [rescanError, setRescanError] = useState("");
 
   const token = localStorage.getItem("token");
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
+  };
+
+  // Validate URL format
+  const validateURL = (url) => {
+    if (!url || !url.trim()) {
+      return { valid: false, message: "Please enter a valid URL." };
+    }
+
+    const trimmedUrl = url.trim();
+    
+    let urlToCheck = trimmedUrl;
+    if (!urlToCheck.startsWith('http://') && !urlToCheck.startsWith('https://')) {
+      urlToCheck = 'https://' + urlToCheck;
+    }
+
+    try {
+      const urlObj = new URL(urlToCheck);
+      
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        return { valid: false, message: "Please enter a valid URL (http or https)." };
+      }
+      
+      if (!urlObj.hostname.includes('.')) {
+        return { valid: false, message: "Please enter a valid URL." };
+      }
+      
+      return { valid: true, url: trimmedUrl };
+    } catch {
+      return { valid: false, message: "Please enter a valid URL." };
+    }
   };
 
   useEffect(() => {
@@ -142,12 +173,22 @@ export default function ScanDetails() {
   };
 
   const handleRescan = async () => {
+    // Clear previous errors
+    setRescanError("");
+    
+    // Validate URL before rescanning
+    const validation = validateURL(scan?.url || "");
+    if (!validation.valid) {
+      setRescanError(validation.message);
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch("http://127.0.0.1:8000/predict", {
         method: "POST",
         headers,
-        body: JSON.stringify({ url: scan.url }),
+        body: JSON.stringify({ url: validation.url }),
       });
       const data = await res.json();
       setScan(data);
@@ -240,6 +281,13 @@ export default function ScanDetails() {
       </header>
 
       <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
+        {/* Rescan Error Message */}
+        {rescanError && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-400 text-sm">
+            ⚠ {rescanError}
+          </div>
+        )}
+
         {/* URL Section */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">Scanned URL</p>
