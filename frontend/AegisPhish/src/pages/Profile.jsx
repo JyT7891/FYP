@@ -1,21 +1,29 @@
 // src/pages/Profile.jsx
+// React hooks for state and lifecycle management
 import { useState, useEffect } from "react";
+// Router navigation hook for page redirection
 import { useNavigate } from "react-router-dom";
 
+// Displays a user statistic card (e.g., scans, detection rate)
 function StatCard({ label, value, icon, color }) {
   return (
     <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-5">
       <div className="flex items-center gap-3 mb-2">
-        <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}>
+        <div
+          className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}
+        >
           <span className="text-lg">{icon}</span>
         </div>
-        <p className="text-xs text-gray-500 tracking-widest uppercase">{label}</p>
+        <p className="text-xs text-gray-500 tracking-widest uppercase">
+          {label}
+        </p>
       </div>
       <p className="text-2xl font-bold text-white">{value}</p>
     </div>
   );
 }
 
+// Badge showing activity type (scan, report, login)
 function ActivityBadge({ type }) {
   const styles = {
     scan: "bg-teal-500/10 text-teal-400 border-teal-500/30",
@@ -29,7 +37,16 @@ function ActivityBadge({ type }) {
   );
 }
 
-function Field({ label, type = "text", placeholder, value, onChange, error, disabled }) {
+// Reusable form input field with validation and password toggle support
+function Field({
+  label,
+  type = "text",
+  placeholder,
+  value,
+  onChange,
+  error,
+  disabled,
+}) {
   const [show, setShow] = useState(false);
   const isPassword = type === "password";
 
@@ -66,6 +83,7 @@ function Field({ label, type = "text", placeholder, value, onChange, error, disa
   );
 }
 
+// Temporary notification popup component
 function Toast({ message, type }) {
   if (!message) return null;
   const styles =
@@ -75,59 +93,84 @@ function Toast({ message, type }) {
         ? "bg-orange-500/10 border-orange-500/30 text-orange-400"
         : "bg-red-500/10 border-red-500/30 text-red-400";
   return (
-    <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg border text-sm z-50 shadow-lg ${styles}`}>
+    <div
+      className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg border text-sm z-50 shadow-lg ${styles}`}
+    >
       {message}
     </div>
   );
 }
 
+// Main user profile page component
 export default function Profile() {
   const navigate = useNavigate();
+  // Logged-in user data state
   const [user, setUser] = useState(null);
+  // User statistics state (scans, detection rate, etc.)
   const [stats, setStats] = useState(null);
+  // Recent scan/activity history
   const [recentActivity, setRecentActivity] = useState([]);
+  // Page loading state
   const [loading, setLoading] = useState(true);
+  // Toggle profile edit mode
   const [isEditing, setIsEditing] = useState(false);
+  // Toast notification state
   const [toast, setToast] = useState({ message: "", type: "" });
+  // Warning state when email is changed
   const [emailChangedWarning, setEmailChangedWarning] = useState(false);
 
-  // Verification code states
+  // Controls email verification modal visibility
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  // Email verification code input state
   const [verificationCode, setVerificationCode] = useState("");
+  // Loading state for verification request
   const [verifying, setVerifying] = useState(false);
+  // Temporary user ID during email change verification
   const [tempUserId, setTempUserId] = useState("");
+  // Controls resend verification cooldown
   const [resendDisabled, setResendDisabled] = useState(false);
+  // Countdown timer for resend verification code
   const [resendTimer, setResendTimer] = useState(0);
 
-  // Form states
+  // User profile avatar URL state
   const [avatar, setAvatar] = useState("");
+  // Avatar upload loading state
   const [avatarLoading, setAvatarLoading] = useState(false);
+  // Avatar removal loading state
   const [removingAvatar, setRemovingAvatar] = useState(false);
+  // Editable profile form state
   const [profile, setProfile] = useState({ name: "", email: "" });
+  // Profile validation error state
   const [profileErrors, setProfileErrors] = useState({});
+  // Profile update loading state
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Password form
+  // Password change form state
   const [passwords, setPasswords] = useState({
     current: "",
     newPass: "",
     confirm: "",
   });
+  // Password validation error state
   const [passwordErrors, setPasswordErrors] = useState({});
+  // Password update loading state
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  // JWT authentication token from localStorage
   const token = localStorage.getItem("token");
+  // Default API request headers with authorization
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
+  // Show toast notification
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast({ message: "", type: "" }), 4000);
   };
 
-  // Fetch user data
+  // Fetch user profile, stats, and recent activity data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -165,6 +208,7 @@ export default function Profile() {
   }, []);
 
   // Check if email exists
+  // Check if email already exists in system
   const checkEmailExists = async (email) => {
     try {
       const res = await fetch(
@@ -180,6 +224,7 @@ export default function Profile() {
   };
 
   // Handle profile save
+  // Save updated profile information
   const handleProfileSave = async () => {
     const e = {};
     if (!profile.name.trim()) e.name = "Name is required.";
@@ -193,7 +238,8 @@ export default function Profile() {
     if (emailChanged && profile.email) {
       const emailExists = await checkEmailExists(profile.email);
       if (emailExists) {
-        e.email = "This email is already registered. Please use a different email address.";
+        e.email =
+          "This email is already registered. Please use a different email address.";
       }
     }
 
@@ -222,7 +268,10 @@ export default function Profile() {
       if (emailChanged) {
         setTempUserId(user?.user_id || "");
         setShowVerificationModal(true);
-        showToast("A verification code has been sent to your new email address.", "warning");
+        showToast(
+          "A verification code has been sent to your new email address.",
+          "warning",
+        );
 
         // Start resend timer
         setResendDisabled(true);
@@ -260,6 +309,7 @@ export default function Profile() {
   };
 
   // Handle verification code submission
+  // Verify email change using 6-digit code
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
       showToast("Please enter the 6-digit verification code.", "error");
@@ -269,7 +319,7 @@ export default function Profile() {
     setVerifying(true);
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/api/user/verify-email-change",  // ← Changed to profile endpoint
+        "http://127.0.0.1:8000/api/user/verify-email-change", // ← Changed to profile endpoint
         {
           method: "POST",
           headers: {
@@ -309,12 +359,13 @@ export default function Profile() {
   };
 
   // Handle resend verification code
+  // Resend email verification code
   const handleResendCode = async () => {
     if (resendDisabled) return;
 
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/api/user/resend-profile-verification",  // ← Changed to profile endpoint
+        "http://127.0.0.1:8000/api/user/resend-profile-verification", // ← Changed to profile endpoint
         {
           method: "POST",
           headers: {
@@ -327,7 +378,10 @@ export default function Profile() {
       const data = await res.json();
 
       if (res.ok) {
-        showToast("New verification code sent! Please check your inbox.", "success");
+        showToast(
+          "New verification code sent! Please check your inbox.",
+          "success",
+        );
         setResendDisabled(true);
         setResendTimer(60);
         const timer = setInterval(() => {
@@ -350,13 +404,16 @@ export default function Profile() {
   };
 
   // Handle password save
+  // Update user password
   const handlePasswordSave = async () => {
     const e = {};
     if (!passwords.current) e.current = "Current password is required.";
     if (!passwords.newPass) e.newPass = "New password is required.";
-    else if (passwords.newPass.length < 8) e.newPass = "Must be at least 8 characters.";
+    else if (passwords.newPass.length < 8)
+      e.newPass = "Must be at least 8 characters.";
     if (!passwords.confirm) e.confirm = "Please confirm your new password.";
-    else if (passwords.confirm !== passwords.newPass) e.confirm = "Passwords do not match.";
+    else if (passwords.confirm !== passwords.newPass)
+      e.confirm = "Passwords do not match.";
     setPasswordErrors(e);
     if (Object.keys(e).length > 0) return;
 
@@ -385,6 +442,7 @@ export default function Profile() {
   };
 
   // Handle avatar upload
+  // Upload user profile picture
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -416,6 +474,7 @@ export default function Profile() {
   };
 
   // Handle avatar removal
+  // Remove user profile picture
   const handleRemoveAvatar = async () => {
     setRemovingAvatar(true);
     try {
@@ -434,12 +493,14 @@ export default function Profile() {
     }
   };
 
+  // Get full avatar URL for display
   const getAvatarUrl = () => {
     if (!avatar) return null;
     if (avatar.startsWith("/static")) return `http://127.0.0.1:8000${avatar}`;
     return avatar;
   };
 
+  // Format date into readable string
   const formatDate = (dateString) => {
     if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -449,6 +510,7 @@ export default function Profile() {
     });
   };
 
+  // Convert timestamp into relative time (e.g., "2 min ago")
   const timeAgo = (dateString) => {
     if (!dateString) return "—";
     const diffMs = new Date() - new Date(dateString);
@@ -456,11 +518,13 @@ export default function Profile() {
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min ago`;
     const diffHours = Math.floor(diffMs / 3600000);
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     const diffDays = Math.floor(diffMs / 86400000);
     return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   };
 
+  // Loading screen while fetching profile data
   if (loading) {
     return (
       <div className="min-h-screen bg-[#020c1b] text-white flex items-center justify-center">
@@ -472,14 +536,18 @@ export default function Profile() {
     );
   }
 
+  // Render profile page UI
   return (
     <>
+      {/* Profile page header */}
       <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-base font-semibold">My Profile</h1>
             <p className="text-xs text-gray-500">
-              {isEditing ? "Edit your account information" : "View your account information"}
+              {isEditing
+                ? "Edit your account information"
+                : "View your account information"}
             </p>
           </div>
           <button
@@ -488,7 +556,10 @@ export default function Profile() {
               setEmailChangedWarning(false);
               setShowVerificationModal(false);
               if (isEditing) {
-                setProfile({ name: user?.name || "", email: user?.email || "" });
+                setProfile({
+                  name: user?.name || "",
+                  email: user?.email || "",
+                });
                 setProfileErrors({});
               }
             }}
@@ -498,16 +569,20 @@ export default function Profile() {
           </button>
         </div>
       </header>
-
       <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
         {/* Profile Header Card */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <div className="flex flex-col md:flex-row items-center gap-6">
+            // User avatar section
             {/* Avatar */}
             <div className="relative shrink-0">
               <div className="w-24 h-24 rounded-full bg-teal-500/20 border-2 border-teal-500/30 flex items-center justify-center overflow-hidden">
                 {getAvatarUrl() ? (
-                  <img src={getAvatarUrl()} alt={user?.name} className="w-full h-full object-cover" />
+                  <img
+                    src={getAvatarUrl()}
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <span className="text-3xl font-bold text-teal-400">
                     {user?.name?.charAt(0).toUpperCase() || "U"}
@@ -518,7 +593,12 @@ export default function Profile() {
                 <>
                   <label className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition cursor-pointer text-xs text-white">
                     {avatarLoading ? "…" : "Edit"}
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                    />
                   </label>
                   {avatar && (
                     <button
@@ -532,42 +612,61 @@ export default function Profile() {
                 </>
               )}
             </div>
-
+            // Profile information display/edit section
             {/* User Info - Inline form when editing */}
             <div className="flex-1">
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Full Name</label>
+                    <label className="text-xs text-gray-500 mb-1 block">
+                      Full Name
+                    </label>
                     <input
                       type="text"
                       value={profile.name}
-                      onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
+                      onChange={(e) =>
+                        setProfile((p) => ({ ...p, name: e.target.value }))
+                      }
                       className="w-full md:w-80 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-teal-400 outline-none transition"
                       placeholder="Your name"
                     />
-                    {profileErrors.name && <p className="text-xs text-red-400 mt-1">{profileErrors.name}</p>}
+                    {profileErrors.name && (
+                      <p className="text-xs text-red-400 mt-1">
+                        {profileErrors.name}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Email Address</label>
+                    <label className="text-xs text-gray-500 mb-1 block">
+                      Email Address
+                    </label>
                     <input
                       type="email"
                       value={profile.email}
-                      onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
+                      onChange={(e) =>
+                        setProfile((p) => ({ ...p, email: e.target.value }))
+                      }
                       className="w-full md:w-80 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-teal-400 outline-none transition"
                       placeholder="your@email.com"
                     />
-                    {profileErrors.email && <p className="text-xs text-red-400 mt-1">{profileErrors.email}</p>}
+                    {profileErrors.email && (
+                      <p className="text-xs text-red-400 mt-1">
+                        {profileErrors.email}
+                      </p>
+                    )}
                     {profile.email !== user?.email && profile.email && (
                       <p className="text-xs text-orange-400 mt-1">
-                        ⚠️ Changing your email will require verification with a 6-digit code
+                        ⚠️ Changing your email will require verification with a
+                        6-digit code
                       </p>
                     )}
                   </div>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-xl font-semibold text-white">{user?.name}</h2>
+                  <h2 className="text-xl font-semibold text-white">
+                    {user?.name}
+                  </h2>
                   <p className="text-sm text-gray-400">{user?.email}</p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     <span className="text-xs px-3 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30 capitalize">
@@ -582,7 +681,6 @@ export default function Profile() {
             </div>
           </div>
         </div>
-
         {/* Action Buttons when editing */}
         {isEditing && (
           <div className="flex gap-4 justify-end">
@@ -595,14 +693,17 @@ export default function Profile() {
             </button>
           </div>
         )}
-
         {/* Email Verification Status (only show if not verified) */}
         {!user?.email_verified && !isEditing && (
           <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <p className="text-sm font-semibold text-orange-400">Email Not Verified</p>
-                <p className="text-xs text-gray-300">Please verify your email address to secure your account.</p>
+                <p className="text-sm font-semibold text-orange-400">
+                  Email Not Verified
+                </p>
+                <p className="text-xs text-gray-300">
+                  Please verify your email address to secure your account.
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -616,26 +717,50 @@ export default function Profile() {
             </div>
           </div>
         )}
-
+        // User statistics overview section
         {/* Statistics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Scans" value={stats?.total_scans || 0} icon="🔍" color="bg-teal-500/10" />
-          <StatCard label="Phishing Detected" value={stats?.phishing_caught || 0} icon="⚠️" color="bg-red-500/10" />
-          <StatCard label="Detection Rate" value={stats?.detection_rate || "0%"} icon="📊" color="bg-purple-500/10" />
-          <StatCard label="Avg. Scan Time" value={stats?.avg_scan_time || "1.2s"} icon="⚡" color="bg-blue-500/10" />
+          <StatCard
+            label="Total Scans"
+            value={stats?.total_scans || 0}
+            icon="🔍"
+            color="bg-teal-500/10"
+          />
+          <StatCard
+            label="Phishing Detected"
+            value={stats?.phishing_caught || 0}
+            icon="⚠️"
+            color="bg-red-500/10"
+          />
+          <StatCard
+            label="Detection Rate"
+            value={stats?.detection_rate || "0%"}
+            icon="📊"
+            color="bg-purple-500/10"
+          />
+          <StatCard
+            label="Avg. Scan Time"
+            value={stats?.avg_scan_time || "1.2s"}
+            icon="⚡"
+            color="bg-blue-500/10"
+          />
         </div>
-
+        // Password change section
         {/* Change Password Section (only when editing) */}
         {isEditing && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
-            <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">Change Password</p>
+            <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
+              Change Password
+            </p>
             <div className="max-w-md">
               <Field
                 label="Current password"
                 type="password"
                 placeholder="Enter current password"
                 value={passwords.current}
-                onChange={(e) => setPasswords((p) => ({ ...p, current: e.target.value }))}
+                onChange={(e) =>
+                  setPasswords((p) => ({ ...p, current: e.target.value }))
+                }
                 error={passwordErrors.current}
               />
               <Field
@@ -643,7 +768,9 @@ export default function Profile() {
                 type="password"
                 placeholder="Enter new password"
                 value={passwords.newPass}
-                onChange={(e) => setPasswords((p) => ({ ...p, newPass: e.target.value }))}
+                onChange={(e) =>
+                  setPasswords((p) => ({ ...p, newPass: e.target.value }))
+                }
                 error={passwordErrors.newPass}
               />
               <Field
@@ -651,7 +778,9 @@ export default function Profile() {
                 type="password"
                 placeholder="Confirm new password"
                 value={passwords.confirm}
-                onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
+                onChange={(e) =>
+                  setPasswords((p) => ({ ...p, confirm: e.target.value }))
+                }
                 error={passwordErrors.confirm}
               />
               <button
@@ -664,39 +793,53 @@ export default function Profile() {
             </div>
           </div>
         )}
-
+        // Account summary details section
         {/* Account Summary Card (view only) */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
-          <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">Account Summary</p>
+          <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
+            Account Summary
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-sm text-gray-400">Account ID</span>
-              <span className="text-sm font-mono text-gray-300">{user?.user_id?.slice(-8) || "—"}</span>
+              <span className="text-sm font-mono text-gray-300">
+                {user?.user_id?.slice(-8) || "—"}
+              </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-sm text-gray-400">Account Type</span>
-              <span className="text-sm capitalize text-gray-300">{user?.role || "User"}</span>
+              <span className="text-sm capitalize text-gray-300">
+                {user?.role || "User"}
+              </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-sm text-gray-400">Email Verified</span>
-              <span className={`text-sm ${user?.email_verified ? "text-teal-400" : "text-orange-400"}`}>
+              <span
+                className={`text-sm ${user?.email_verified ? "text-teal-400" : "text-orange-400"}`}
+              >
                 {user?.email_verified ? "✓ Yes" : "⚠ Pending"}
               </span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-800">
               <span className="text-sm text-gray-400">Member Since</span>
-              <span className="text-sm text-gray-300">{formatDate(user?.created_at)}</span>
+              <span className="text-sm text-gray-300">
+                {formatDate(user?.created_at)}
+              </span>
             </div>
           </div>
         </div>
-
+        // Recent activity list section
         {/* Recent Activity */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
           <div className="px-5 py-4 border-b border-teal-500/20">
-            <p className="text-xs text-gray-500 tracking-widest uppercase">Recent Activity</p>
+            <p className="text-xs text-gray-500 tracking-widest uppercase">
+              Recent Activity
+            </p>
           </div>
           {recentActivity.length === 0 ? (
-            <p className="text-gray-600 text-sm text-center py-8">No recent activity.</p>
+            <p className="text-gray-600 text-sm text-center py-8">
+              No recent activity.
+            </p>
           ) : (
             <div className="divide-y divide-teal-500/10">
               {recentActivity.map((scan, i) => (
@@ -715,36 +858,42 @@ export default function Profile() {
                     <div className="flex items-center gap-3 text-xs text-gray-600">
                       <span>{timeAgo(scan.scanned_at)}</span>
                       <span>•</span>
-                      <span className={
-                        scan.prediction === "Legitimate"
-                          ? "text-teal-400"
-                          : scan.prediction === "Suspicious"
-                            ? "text-orange-400"
-                            : "text-red-400"
-                      }>
+                      <span
+                        className={
+                          scan.prediction === "Legitimate"
+                            ? "text-teal-400"
+                            : scan.prediction === "Suspicious"
+                              ? "text-orange-400"
+                              : "text-red-400"
+                        }
+                      >
                         {scan.prediction}
                       </span>
                       <span>•</span>
                       <span>Risk: {Math.round(scan.risk_score)}%</span>
                     </div>
                   </div>
-                  <div className="shrink-0 text-gray-500 group-hover:text-teal-400 transition">→</div>
+                  <div className="shrink-0 text-gray-500 group-hover:text-teal-400 transition">
+                    →
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-
+        // Footer branding text
         <p className="text-center text-xs text-gray-700 pb-2">
           ▢ AegisPhish · Protecting users from phishing attacks
         </p>
       </div>
-
+      // Email verification modal
       {/* Verification Code Modal */}
       {showVerificationModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div className="bg-[#0a192f] border border-teal-500/30 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-base font-semibold mb-2 text-teal-400">Verify Email</h3>
+            <h3 className="text-base font-semibold mb-2 text-teal-400">
+              Verify Email
+            </h3>
             <p className="text-xs text-gray-400 mb-4">
               Enter the 6-digit verification code sent to your email address.
             </p>
@@ -755,7 +904,11 @@ export default function Profile() {
                 type="text"
                 placeholder="Enter 6-digit code"
                 value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+                onChange={(e) =>
+                  setVerificationCode(
+                    e.target.value.replace(/[^0-9]/g, "").slice(0, 6),
+                  )
+                }
                 className="w-full mt-2 p-3 rounded-lg bg-gray-800 border border-gray-600 focus:border-teal-400 outline-none transition text-center text-2xl font-mono tracking-widest"
                 maxLength={6}
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
@@ -778,7 +931,9 @@ export default function Profile() {
                 disabled={resendDisabled}
                 className="text-xs text-gray-500 hover:text-teal-400 transition"
               >
-                {resendDisabled ? `Resend code in ${resendTimer}s` : "Didn't receive code? Resend"}
+                {resendDisabled
+                  ? `Resend code in ${resendTimer}s`
+                  : "Didn't receive code? Resend"}
               </button>
             </div>
 
@@ -794,7 +949,7 @@ export default function Profile() {
           </div>
         </div>
       )}
-
+      // Toast notification display
       <Toast message={toast.message} type={toast.type} />
     </>
   );

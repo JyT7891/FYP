@@ -1,15 +1,25 @@
-// src/pages/AdminUsers.jsx
+// Admin users page for managing system users (view, edit roles, delete accounts)
 import { useState, useEffect } from "react";
 
+// Main Admin Users component
 export default function AdminUsers() {
+  // List of all users
   const [users, setUsers] = useState([]);
+  // Loading state for user data
   const [loading, setLoading] = useState(true);
+  // Search input state for filtering users
   const [search, setSearch] = useState("");
+  // Currently selected user
   const [selectedUser, setSelectedUser] = useState(null);
+  // Controls delete confirmation modal visibility
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Controls edit role modal visibility
   const [showEditModal, setShowEditModal] = useState(false);
+  // Stores user ID selected for deletion
   const [userToDelete, setUserToDelete] = useState(null);
+  // Stores user being edited
   const [editingUser, setEditingUser] = useState(null);
+  // Loading state for role update request
   const [updating, setUpdating] = useState(false);
 
   const token = localStorage.getItem("token");
@@ -18,10 +28,12 @@ export default function AdminUsers() {
     Authorization: `Bearer ${token}`,
   };
 
+  // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  // Fetch all users from backend
   const fetchUsers = async () => {
     try {
       const res = await fetch("http://127.0.0.1:8000/admin/users", { headers });
@@ -34,22 +46,28 @@ export default function AdminUsers() {
     }
   };
 
+  // Update user role (admin/user)
   const handleUpdateRole = async () => {
     if (!editingUser) return;
-    
+
     setUpdating(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/admin/users/${editingUser._id}/role`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ role: editingUser.role }),
-      });
-      
+      const res = await fetch(
+        `http://127.0.0.1:8000/admin/users/${editingUser._id}/role`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ role: editingUser.role }),
+        },
+      );
+
       if (res.ok) {
         // Update user in the list
-        setUsers(users.map(u => 
-          u._id === editingUser._id ? { ...u, role: editingUser.role } : u
-        ));
+        setUsers(
+          users.map((u) =>
+            u._id === editingUser._id ? { ...u, role: editingUser.role } : u,
+          ),
+        );
         setShowEditModal(false);
         setEditingUser(null);
       } else {
@@ -64,17 +82,21 @@ export default function AdminUsers() {
     }
   };
 
+  // Delete user account permanently
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
-    
+
     try {
-      const res = await fetch(`http://127.0.0.1:8000/admin/users/${userToDelete}`, {
-        method: "DELETE",
-        headers,
-      });
-      
+      const res = await fetch(
+        `http://127.0.0.1:8000/admin/users/${userToDelete}`,
+        {
+          method: "DELETE",
+          headers,
+        },
+      );
+
       if (res.ok) {
-        setUsers(users.filter(u => u._id !== userToDelete));
+        setUsers(users.filter((u) => u._id !== userToDelete));
         setShowDeleteConfirm(false);
         setUserToDelete(null);
         setSelectedUser(null);
@@ -88,23 +110,29 @@ export default function AdminUsers() {
     }
   };
 
+  // Open role edit modal for selected user
   const openEditModal = (user) => {
     setEditingUser({ ...user });
     setShowEditModal(true);
   };
 
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(search.toLowerCase()) ||
-    user.email?.toLowerCase().includes(search.toLowerCase())
+  // Filter users based on search input
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name?.toLowerCase().includes(search.toLowerCase()) ||
+      user.email?.toLowerCase().includes(search.toLowerCase()),
   );
 
+  // Format user join date into readable format
   const formatDate = (dateString) => {
     if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Render admin users UI
   return (
     <>
+      {/* Page header section */}
       <header className="border-b border-purple-500/20 px-6 py-4 bg-[#0f0f23]/80 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -112,6 +140,7 @@ export default function AdminUsers() {
             <p className="text-xs text-gray-500">Manage system users</p>
           </div>
           <div className="flex gap-2">
+            {/* Search input field */}
             <input
               type="text"
               placeholder="Search users..."
@@ -119,6 +148,7 @@ export default function AdminUsers() {
               onChange={(e) => setSearch(e.target.value)}
               className="bg-gray-800/60 border border-gray-600 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-purple-400 transition w-48"
             />
+            {/* Refresh users button */}
             <button
               onClick={fetchUsers}
               className="text-xs px-3 py-1.5 rounded-lg border border-purple-500/40 text-purple-400 hover:bg-purple-500/10 transition"
@@ -135,36 +165,58 @@ export default function AdminUsers() {
         ) : filteredUsers.length === 0 ? (
           <p className="text-gray-500 text-center py-12">No users found</p>
         ) : (
+          // Users table container
           <div className="rounded-xl border border-purple-500/20 bg-gradient-to-b from-[#0f0f23] to-[#0a0a1a] overflow-x-auto">
             <table className="w-full text-left">
               <thead className="border-b border-purple-500/20 bg-[#0f0f23]">
                 <tr>
-                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">User</th>
-                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">Email</th>
-                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">Role</th>
-                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">Joined</th>
-                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">Verified</th>
-                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">Actions</th>
+                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">
+                    User
+                  </th>
+                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">
+                    Email
+                  </th>
+                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">
+                    Role
+                  </th>
+                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">
+                    Joined
+                  </th>
+                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">
+                    Verified
+                  </th>
+                  <th className="px-5 py-3 text-xs text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-purple-500/10">
                 {filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-white/[0.02] transition">
+                  <tr
+                    key={user._id}
+                    className="hover:bg-white/[0.02] transition"
+                  >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 text-xs font-bold">
                           {user.name?.charAt(0).toUpperCase() || "U"}
                         </div>
-                        <span className="text-sm text-gray-300">{user.name || "—"}</span>
+                        <span className="text-sm text-gray-300">
+                          {user.name || "—"}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-sm text-gray-400">{user.email}</td>
+                    <td className="px-5 py-3 text-sm text-gray-400">
+                      {user.email}
+                    </td>
                     <td className="px-5 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        user.role === "admin" 
-                          ? "bg-purple-500/10 text-purple-400" 
-                          : "bg-teal-500/10 text-teal-400"
-                      }`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          user.role === "admin"
+                            ? "bg-purple-500/10 text-purple-400"
+                            : "bg-teal-500/10 text-teal-400"
+                        }`}
+                      >
                         {user.role || "user"}
                       </span>
                     </td>
@@ -172,7 +224,9 @@ export default function AdminUsers() {
                       {formatDate(user.created_at)}
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`text-xs ${user.email_verified ? "text-teal-400" : "text-orange-400"}`}>
+                      <span
+                        className={`text-xs ${user.email_verified ? "text-teal-400" : "text-orange-400"}`}
+                      >
                         {user.email_verified ? "✓ Verified" : "⚠ Pending"}
                       </span>
                     </td>
@@ -207,15 +261,18 @@ export default function AdminUsers() {
         )}
       </div>
 
-      {/* Edit Role Modal */}
+      {/* Edit role modal */}
       {showEditModal && editingUser && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div className="bg-[#0f0f23] border border-purple-500/30 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-base font-semibold mb-2 text-purple-400">Edit User Role</h3>
+            <h3 className="text-base font-semibold mb-2 text-purple-400">
+              Edit User Role
+            </h3>
             <p className="text-gray-400 text-sm mb-4">
-              Change role for <span className="text-white font-medium">{editingUser.name}</span>
+              Change role for{" "}
+              <span className="text-white font-medium">{editingUser.name}</span>
             </p>
-            
+
             <div className="mb-4">
               <label className="text-sm text-gray-300 mb-2 block">Role</label>
               <div className="flex gap-3">
@@ -225,7 +282,9 @@ export default function AdminUsers() {
                     name="role"
                     value="user"
                     checked={editingUser.role === "user"}
-                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                    onChange={(e) =>
+                      setEditingUser({ ...editingUser, role: e.target.value })
+                    }
                     className="w-4 h-4 text-purple-500 focus:ring-purple-500"
                   />
                   <span className="text-sm text-gray-300">User</span>
@@ -236,14 +295,16 @@ export default function AdminUsers() {
                     name="role"
                     value="admin"
                     checked={editingUser.role === "admin"}
-                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                    onChange={(e) =>
+                      setEditingUser({ ...editingUser, role: e.target.value })
+                    }
                     className="w-4 h-4 text-purple-500 focus:ring-purple-500"
                   />
                   <span className="text-sm text-gray-300">Admin</span>
                 </label>
               </div>
             </div>
-            
+
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => {
@@ -266,16 +327,23 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete confirmation modal */}
       {showDeleteConfirm && selectedUser && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div className="bg-[#0f0f23] border border-red-500/30 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-base font-semibold mb-2 text-red-400">Delete User</h3>
+            <h3 className="text-base font-semibold mb-2 text-red-400">
+              Delete User
+            </h3>
             <p className="text-gray-400 text-sm mb-4">
-              Are you sure you want to delete user <span className="text-white font-medium">{selectedUser.name}</span>?
+              Are you sure you want to delete user{" "}
+              <span className="text-white font-medium">
+                {selectedUser.name}
+              </span>
+              ?
             </p>
             <p className="text-xs text-gray-500 mb-4">
-              This will permanently delete their account and all associated scan history.
+              This will permanently delete their account and all associated scan
+              history.
             </p>
             <div className="flex gap-3">
               <button

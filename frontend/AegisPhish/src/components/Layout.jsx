@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
+// Main layout component with sidebar navigation and protected page wrapper
 
+// Sidebar navigation items configuration
 const navItems = [
   { icon: "▣", label: "Dashboard", path: "/dashboard" },
   { icon: "⬡", label: "Scan URL", path: "/scan" },
@@ -8,17 +10,21 @@ const navItems = [
   { icon: "👤", label: "Profile", path: "/profile" },
 ];
 
+// Main Layout component definition
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
+  // UI state for logout confirmation modal
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  // User avatar state from localStorage
   const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || "");
+  // User name state from localStorage
   const [userName, setUserName] = useState(
     localStorage.getItem("name") || "User",
   );
   const userRole = localStorage.getItem("role") || "user";
 
-  // Load avatar and name from localStorage on mount
+  // Load user profile data from localStorage on component mount
   useEffect(() => {
     const storedAvatar = localStorage.getItem("avatar");
     const storedName = localStorage.getItem("name");
@@ -34,7 +40,7 @@ export default function Layout() {
     }
   }, []);
 
-  // Listen for avatar and profile updates
+  // Listen for profile updates from other components
   useEffect(() => {
     const handleAvatarUpdate = () => {
       const updatedAvatar = localStorage.getItem("avatar");
@@ -65,6 +71,7 @@ export default function Layout() {
     };
   }, []);
 
+  // Clears auth data and redirects user to login page
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
@@ -74,7 +81,7 @@ export default function Layout() {
     navigate("/", { replace: true });
   };
 
-  // Determine which nav item is active
+  // Determines currently active sidebar navigation item
   const getActiveNav = () => {
     const exactMatch = navItems.find((item) => item.path === location.pathname);
     if (exactMatch) return exactMatch.label;
@@ -89,7 +96,7 @@ export default function Layout() {
 
   const activeNav = getActiveNav();
 
-  // Construct full avatar URL if needed
+  // Constructs full avatar URL if stored as relative path
   const getAvatarUrl = () => {
     if (!avatar) return null;
     if (avatar.startsWith("/static")) {
@@ -98,8 +105,10 @@ export default function Layout() {
     return avatar;
   };
 
+  // Render sidebar, main layout, and logout modal
   return (
     <div className="min-h-screen bg-[#020c1b] text-white flex w-full">
+      // Sidebar navigation panel
       {/* Sidebar */}
       <aside className="w-16 md:w-56 flex flex-col border-r border-teal-500/20 bg-[#040d1a] shrink-0 h-screen sticky top-0">
         {/* Logo */}
@@ -111,7 +120,7 @@ export default function Layout() {
             AegisPhish
           </span>
         </div>
-
+        // Navigation buttons section
         {/* Nav */}
         <nav className="flex flex-col gap-1 p-2 mt-2 flex-1">
           {navItems.map((item) => (
@@ -129,7 +138,7 @@ export default function Layout() {
             </button>
           ))}
         </nav>
-
+        // User profile display and logout controls
         {/* User Section with Logout */}
         <div className="p-3 border-t border-teal-500/20">
           <div className="flex items-center gap-3 px-2 py-2 mb-2">
@@ -175,7 +184,7 @@ export default function Layout() {
           </button>
         </div>
       </aside>
-
+      // Logout confirmation modal overlay
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
@@ -202,7 +211,7 @@ export default function Layout() {
           </div>
         </div>
       )}
-
+      // Main routed content area
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto min-w-0 w-full">
         <Outlet />

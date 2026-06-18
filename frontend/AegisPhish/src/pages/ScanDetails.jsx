@@ -1,38 +1,60 @@
 // src/pages/ScanDetails.jsx
+// React hooks for state and lifecycle management
 import { useState, useEffect } from "react";
+// Router hooks for accessing URL params and navigation
 import { useParams, useNavigate } from "react-router-dom";
 
+// Circular risk gauge showing scan risk score and prediction label
 function RiskGauge({ score, prediction }) {
   const color =
-    prediction === "Legitimate" ? "#2dd4bf"
-    : prediction === "Suspicious" ? "#fb923c"
-    : "#f87171";
+    prediction === "Legitimate"
+      ? "#2dd4bf"
+      : prediction === "Suspicious"
+        ? "#fb923c"
+        : "#f87171";
 
   const label =
-    prediction === "Legitimate" ? "Safe"
-    : prediction === "Suspicious" ? "Suspicious"
-    : "Phishing";
+    prediction === "Legitimate"
+      ? "Safe"
+      : prediction === "Suspicious"
+        ? "Suspicious"
+        : "Phishing";
 
   const bgClass =
     prediction === "Legitimate"
       ? "bg-teal-500/10 border-teal-500/30"
       : prediction === "Suspicious"
-      ? "bg-orange-500/10 border-orange-500/30"
-      : "bg-red-500/10 border-red-500/30";
+        ? "bg-orange-500/10 border-orange-500/30"
+        : "bg-red-500/10 border-red-500/30";
 
   const textClass =
-    prediction === "Legitimate" ? "text-teal-400"
-    : prediction === "Suspicious" ? "text-orange-400"
-    : "text-red-400";
+    prediction === "Legitimate"
+      ? "text-teal-400"
+      : prediction === "Suspicious"
+        ? "text-orange-400"
+        : "text-red-400";
 
   return (
-    <div className={`rounded-xl border p-6 flex flex-col items-center gap-3 ${bgClass}`}>
-      <p className="text-xs text-gray-500 tracking-widest uppercase">Risk Score</p>
+    <div
+      className={`rounded-xl border p-6 flex flex-col items-center gap-3 ${bgClass}`}
+    >
+      <p className="text-xs text-gray-500 tracking-widest uppercase">
+        Risk Score
+      </p>
       <div className="relative w-32 h-32">
         <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-          <circle cx="60" cy="60" r="50" fill="none" stroke="#1f2937" strokeWidth="10" />
           <circle
-            cx="60" cy="60" r="50"
+            cx="60"
+            cy="60"
+            r="50"
+            fill="none"
+            stroke="#1f2937"
+            strokeWidth="10"
+          />
+          <circle
+            cx="60"
+            cy="60"
+            r="50"
             fill="none"
             stroke={color}
             strokeWidth="10"
@@ -41,23 +63,30 @@ function RiskGauge({ score, prediction }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-3xl font-bold ${textClass}`}>{Math.round(score)}</span>
+          <span className={`text-3xl font-bold ${textClass}`}>
+            {Math.round(score)}
+          </span>
           <span className="text-xs text-gray-500">/ 100</span>
         </div>
       </div>
-      <span className={`text-sm font-semibold px-4 py-1.5 rounded-full border ${bgClass} ${textClass}`}>
+      <span
+        className={`text-sm font-semibold px-4 py-1.5 rounded-full border ${bgClass} ${textClass}`}
+      >
         {label}
       </span>
     </div>
   );
 }
 
+// Horizontal bar visualization for SHAP feature importance values
 function ShapBar({ feature, value, maxVal }) {
   const isPositive = value >= 0;
   const width = Math.min((Math.abs(value) / maxVal) * 100, 100);
   return (
     <div className="flex items-center gap-3 text-xs">
-      <span className="text-gray-400 w-48 truncate shrink-0 font-mono">{feature}</span>
+      <span className="text-gray-400 w-48 truncate shrink-0 font-mono">
+        {feature}
+      </span>
       <div className="flex-1 flex items-center gap-2">
         <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
           <div
@@ -67,66 +96,85 @@ function ShapBar({ feature, value, maxVal }) {
             style={{ width: `${width}%` }}
           />
         </div>
-        <span className={`w-14 text-right shrink-0 ${isPositive ? "text-red-400" : "text-teal-400"}`}>
-          {value > 0 ? "+" : ""}{value.toFixed(4)}
+        <span
+          className={`w-14 text-right shrink-0 ${isPositive ? "text-red-400" : "text-teal-400"}`}
+        >
+          {value > 0 ? "+" : ""}
+          {value.toFixed(4)}
         </span>
       </div>
     </div>
   );
 }
 
+// Main scan details page component showing deep analysis of a URL scan
 export default function ScanDetails() {
   const { scanId } = useParams();
   const navigate = useNavigate();
+  // Scan details data state
   const [scan, setScan] = useState(null);
+  // Loading state for scan details fetch
   const [loading, setLoading] = useState(true);
+  // Error state for scan fetch failure
   const [error, setError] = useState(null);
+  // Report submission success state
   const [reportSent, setReportSent] = useState(false);
+  // Error state for rescan validation or failure
   const [rescanError, setRescanError] = useState("");
 
+  // JWT token from local storage for authenticated requests
   const token = localStorage.getItem("token");
+  // Default API request headers with authentication token
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
-  // Validate URL format
+  // Validate and normalize URL before rescan request
   const validateURL = (url) => {
     if (!url || !url.trim()) {
       return { valid: false, message: "Please enter a valid URL." };
     }
 
     const trimmedUrl = url.trim();
-    
+
     let urlToCheck = trimmedUrl;
-    if (!urlToCheck.startsWith('http://') && !urlToCheck.startsWith('https://')) {
-      urlToCheck = 'https://' + urlToCheck;
+    if (
+      !urlToCheck.startsWith("http://") &&
+      !urlToCheck.startsWith("https://")
+    ) {
+      urlToCheck = "https://" + urlToCheck;
     }
 
     try {
       const urlObj = new URL(urlToCheck);
-      
-      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-        return { valid: false, message: "Please enter a valid URL (http or https)." };
+
+      if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+        return {
+          valid: false,
+          message: "Please enter a valid URL (http or https).",
+        };
       }
-      
-      if (!urlObj.hostname.includes('.')) {
+
+      if (!urlObj.hostname.includes(".")) {
         return { valid: false, message: "Please enter a valid URL." };
       }
-      
+
       return { valid: true, url: trimmedUrl };
     } catch {
       return { valid: false, message: "Please enter a valid URL." };
     }
   };
 
+  // Fetch scan details on page load or scanId change
   useEffect(() => {
+    // Fetch scan details from backend API
     const fetchScanDetails = async () => {
       try {
         const res = await fetch(`http://127.0.0.1:8000/scans/${scanId}`, {
           headers,
         });
-        
+
         if (!res.ok) {
           if (res.status === 404) {
             setError("Scan not found");
@@ -137,7 +185,7 @@ export default function ScanDetails() {
           }
           return;
         }
-        
+
         const data = await res.json();
         setScan(data);
       } catch (err) {
@@ -151,18 +199,19 @@ export default function ScanDetails() {
     fetchScanDetails();
   }, [scanId]);
 
+  // Submit report for the current scan URL
   const handleReport = async () => {
     if (!scan) return;
     try {
       const res = await fetch("http://127.0.0.1:8000/report", {
         method: "POST",
         headers,
-        body: JSON.stringify({ 
-          url: scan.url, 
-          note: `Reported from scan details. Prediction: ${scan.prediction}, Risk score: ${scan.risk_score}%` 
+        body: JSON.stringify({
+          url: scan.url,
+          note: `Reported from scan details. Prediction: ${scan.prediction}, Risk score: ${scan.risk_score}%`,
         }),
       });
-      
+
       if (res.ok) {
         setReportSent(true);
         setTimeout(() => setReportSent(false), 3000);
@@ -172,17 +221,18 @@ export default function ScanDetails() {
     }
   };
 
+  // Trigger a new phishing scan for the current URL
   const handleRescan = async () => {
     // Clear previous errors
     setRescanError("");
-    
+
     // Validate URL before rescanning
     const validation = validateURL(scan?.url || "");
     if (!validation.valid) {
       setRescanError(validation.message);
       return;
     }
-    
+
     setLoading(true);
     try {
       const res = await fetch("http://127.0.0.1:8000/predict", {
@@ -199,19 +249,24 @@ export default function ScanDetails() {
     }
   };
 
-  // Prepare SHAP data sorted by absolute value
+  // Top SHAP feature importance values sorted by impact
   const shapEntries = scan?.shap_values
     ? Object.entries(scan.shap_values)
         .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
         .slice(0, 10)
     : [];
+  // Maximum SHAP value used for bar scaling
   const maxShap = shapEntries.length > 0 ? Math.abs(shapEntries[0][1]) : 1;
 
+  // Loading screen UI while fetching scan details
   if (loading) {
     return (
       <>
         <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
-          <button onClick={() => navigate(-1)} className="text-teal-400 hover:text-teal-300 transition">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-teal-400 hover:text-teal-300 transition"
+          >
             ← Back
           </button>
           <h1 className="text-base font-semibold mt-2">Scan Details</h1>
@@ -226,11 +281,15 @@ export default function ScanDetails() {
     );
   }
 
+  // Error screen UI when scan fails to load
   if (error) {
     return (
       <>
         <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
-          <button onClick={() => navigate(-1)} className="text-teal-400 hover:text-teal-300 transition">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-teal-400 hover:text-teal-300 transition"
+          >
             ← Back
           </button>
           <h1 className="text-base font-semibold mt-2">Scan Details</h1>
@@ -250,12 +309,17 @@ export default function ScanDetails() {
     );
   }
 
+  // Render scan details UI
   return (
     <>
+      // Page header section
       <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <button onClick={() => navigate(-1)} className="text-teal-400 hover:text-teal-300 transition inline-flex items-center gap-1">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-teal-400 hover:text-teal-300 transition inline-flex items-center gap-1"
+            >
               ← Back to Reports
             </button>
             <h1 className="text-base font-semibold mt-2">Scan Details</h1>
@@ -279,50 +343,71 @@ export default function ScanDetails() {
           </div>
         </div>
       </header>
-
       <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
+        // Rescan validation error message section
         {/* Rescan Error Message */}
         {rescanError && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-400 text-sm">
             ⚠ {rescanError}
           </div>
         )}
-
+        // Display scanned URL information
         {/* URL Section */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
-          <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">Scanned URL</p>
-          <p className="font-mono text-sm text-gray-200 break-all">{scan?.url}</p>
+          <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">
+            Scanned URL
+          </p>
+          <p className="font-mono text-sm text-gray-200 break-all">
+            {scan?.url}
+          </p>
           <p className="text-xs text-gray-600 mt-3">
-            Scanned on: {scan?.scanned_at ? new Date(scan.scanned_at).toLocaleString() : "—"}
+            Scanned on:{" "}
+            {scan?.scanned_at
+              ? new Date(scan.scanned_at).toLocaleString()
+              : "—"}
           </p>
         </div>
-
+        // Risk gauge and prediction summary section
         {/* Result Row: Gauge + Summary */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <RiskGauge score={scan?.risk_score || 0} prediction={scan?.prediction || "Legitimate"} />
+          <RiskGauge
+            score={scan?.risk_score || 0}
+            prediction={scan?.prediction || "Legitimate"}
+          />
 
           <div className="md:col-span-2 rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Prediction</p>
-                <p className={`text-xl font-semibold ${
-                  scan?.prediction === "Legitimate" ? "text-teal-400" :
-                  scan?.prediction === "Suspicious" ? "text-orange-400" :
-                  "text-red-400"
-                }`}>{scan?.prediction || "—"}</p>
+                <p
+                  className={`text-xl font-semibold ${
+                    scan?.prediction === "Legitimate"
+                      ? "text-teal-400"
+                      : scan?.prediction === "Suspicious"
+                        ? "text-orange-400"
+                        : "text-red-400"
+                  }`}
+                >
+                  {scan?.prediction || "—"}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Risk Score</p>
-                <p className="text-xl font-semibold text-white">{scan?.risk_score?.toFixed(2) || "—"}%</p>
+                <p className="text-xl font-semibold text-white">
+                  {scan?.risk_score?.toFixed(2) || "—"}%
+                </p>
               </div>
             </div>
-            
+
             {scan?.reasons && scan.reasons.length > 0 && (
               <div>
                 <p className="text-xs text-gray-500 mb-2">Key Indicators</p>
                 <div className="space-y-1">
                   {scan.reasons.slice(0, 3).map((reason, i) => (
-                    <p key={i} className="text-xs text-gray-400 flex items-start gap-2">
+                    <p
+                      key={i}
+                      className="text-xs text-gray-400 flex items-start gap-2"
+                    >
                       <span className="text-red-400">⚠</span>
                       {reason}
                     </p>
@@ -332,11 +417,13 @@ export default function ScanDetails() {
             )}
           </div>
         </div>
-
+        // Full list of detection reasons section
         {/* All Detection Reasons */}
         {scan?.reasons && scan.reasons.length > 0 && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
-            <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">Detection Reasons</p>
+            <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
+              Detection Reasons
+            </p>
             <div className="space-y-2">
               {scan.reasons.map((reason, i) => (
                 <div key={i} className="flex items-start gap-3 text-sm">
@@ -347,14 +434,18 @@ export default function ScanDetails() {
             </div>
           </div>
         )}
-
+        // SHAP feature importance visualization section
         {/* SHAP Feature Importance */}
         {shapEntries.length > 0 && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
             <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
               <div>
-                <p className="text-xs text-gray-500 tracking-widest uppercase">SHAP Feature Importance</p>
-                <p className="text-xs text-gray-600 mt-1">Top features influencing this prediction</p>
+                <p className="text-xs text-gray-500 tracking-widest uppercase">
+                  SHAP Feature Importance
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Top features influencing this prediction
+                </p>
               </div>
               <div className="flex gap-4 text-xs">
                 <span className="flex items-center gap-1.5 text-red-400">
@@ -369,36 +460,74 @@ export default function ScanDetails() {
             </div>
             <div className="space-y-3">
               {shapEntries.map(([feature, value]) => (
-                <ShapBar key={feature} feature={feature} value={value} maxVal={maxShap} />
+                <ShapBar
+                  key={feature}
+                  feature={feature}
+                  value={value}
+                  maxVal={maxShap}
+                />
               ))}
             </div>
           </div>
         )}
-
+        // URL structural feature analysis section
         {/* URL Structure Analysis */}
         {scan?.url && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
-            <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">URL Structure Analysis</p>
+            <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
+              URL Structure Analysis
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: "Length", value: scan.url.length },
-                { label: "HTTPS", value: scan.url.startsWith("https") ? "✓ Yes" : "✗ No", color: scan.url.startsWith("https") ? "text-teal-400" : "text-red-400" },
+                {
+                  label: "HTTPS",
+                  value: scan.url.startsWith("https") ? "✓ Yes" : "✗ No",
+                  color: scan.url.startsWith("https")
+                    ? "text-teal-400"
+                    : "text-red-400",
+                },
                 { label: "Dots", value: (scan.url.match(/\./g) || []).length },
-                { label: "Hyphens", value: (scan.url.match(/-/g) || []).length },
-                { label: "Digits", value: (scan.url.match(/[0-9]/g) || []).length },
-                { label: "Slashes", value: (scan.url.match(/\//g) || []).length },
-                { label: "Has @", value: scan.url.includes("@") ? "✗ Yes" : "✓ No", color: scan.url.includes("@") ? "text-red-400" : "text-teal-400" },
-                { label: "TLD", value: scan.url.split(".").pop()?.split("/")[0] ?? "—" },
+                {
+                  label: "Hyphens",
+                  value: (scan.url.match(/-/g) || []).length,
+                },
+                {
+                  label: "Digits",
+                  value: (scan.url.match(/[0-9]/g) || []).length,
+                },
+                {
+                  label: "Slashes",
+                  value: (scan.url.match(/\//g) || []).length,
+                },
+                {
+                  label: "Has @",
+                  value: scan.url.includes("@") ? "✗ Yes" : "✓ No",
+                  color: scan.url.includes("@")
+                    ? "text-red-400"
+                    : "text-teal-400",
+                },
+                {
+                  label: "TLD",
+                  value: scan.url.split(".").pop()?.split("/")[0] ?? "—",
+                },
               ].map((item) => (
-                <div key={item.label} className="rounded-lg bg-gray-800/40 border border-gray-700 p-3">
+                <div
+                  key={item.label}
+                  className="rounded-lg bg-gray-800/40 border border-gray-700 p-3"
+                >
                   <p className="text-xs text-gray-500 mb-1">{item.label}</p>
-                  <p className={`text-sm font-semibold ${item.color || "text-white"}`}>{item.value}</p>
+                  <p
+                    className={`text-sm font-semibold ${item.color || "text-white"}`}
+                  >
+                    {item.value}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
         )}
-
+        // Rescan and report action buttons section
         {/* Action Buttons */}
         <div className="flex gap-4 justify-end pt-4">
           <button
@@ -416,7 +545,7 @@ export default function ScanDetails() {
             </button>
           )}
         </div>
-
+        // Footer branding section
         {/* Footer */}
         <p className="text-center text-xs text-gray-700 pt-4">
           ▢ AegisPhish · ML-powered phishing detection · SHAP explainability
