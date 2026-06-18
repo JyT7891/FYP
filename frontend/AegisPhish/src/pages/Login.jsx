@@ -2,24 +2,58 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [role, setRole] = useState("user");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [resetMessageType, setResetMessageType] = useState("");
+  const [resetEmailError, setResetEmailError] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
+    
+    if (value && !validateEmail(value.trim())) {
+      setEmailError("Please enter a valid email address.");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  const handleResetEmailChange = (e) => {
+    const value = e.target.value;
+    setResetEmail(value);
+    
+    if (value && !validateEmail(value.trim())) {
+      setResetEmailError("Please enter a valid email address.");
+    } else {
+      setResetEmailError("");
+    }
+  };
 
   const handleSignIn = async () => {
     setError("");
 
     if (!email.trim() || !password.trim()) {
       setError("Please enter your email and password.");
+      return;
+    }
+
+    if (!validateEmail(email.trim())) {
+      setError("Please enter a valid email address.");
       return;
     }
 
@@ -38,19 +72,16 @@ export default function Login() {
         return;
       }
 
-      // Store user data in localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("name", data.name);
       
-      // Store avatar if present
       if (data.avatar) {
         localStorage.setItem("avatar", data.avatar);
       } else {
         localStorage.removeItem("avatar");
       }
       
-      // Redirect based on role
       if (data.role === "admin") {
         navigate("/admin", { replace: true });
       } else {
@@ -63,37 +94,63 @@ export default function Login() {
     }
   };
 
+  // ============================================
+  // MODIFIED FORGOT PASSWORD FUNCTION
+  // ============================================
   const handleForgotPassword = async () => {
+    // Reset message
+    setResetMessage("");
+    setResetMessageType("");
+
+    // Check if email is empty
     if (!resetEmail.trim()) {
-      setResetMessage("Please enter your email address.");
+      setResetEmailError("Please enter your email address.");
+      return;
+    }
+
+    // Validate email format
+    if (!validateEmail(resetEmail.trim())) {
+      setResetEmailError("Please enter a valid email address.");
       return;
     }
 
     setResetLoading(true);
-    setResetMessage("");
 
     try {
       const res = await fetch("http://127.0.0.1:8000/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resetEmail }),
+        body: JSON.stringify({ email: resetEmail.trim() }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         setResetMessage(data.detail || "Failed to send reset email.");
+        setResetMessageType("error");
         return;
       }
 
-      setResetMessage("Password reset email sent! Please check your inbox.");
-      setTimeout(() => {
-        setShowForgotPassword(false);
-        setResetEmail("");
-        setResetMessage("");
-      }, 3000);
+      // Check if the backend returned a success flag
+      if (data.success === true) {
+        setResetMessage("Password reset email sent! Please check your inbox.");
+        setResetMessageType("success");
+      } else {
+        // Generic message for security (email not found or other issues)
+        // But we don't tell the user if the email exists or not
+        setResetMessage("If your email is registered, you will receive a reset link.");
+        setResetMessageType("success");
+      }
+      
+      // Clear the error state
+      setResetEmailError("");
+      
+      // Do NOT jump back to login page automatically
+      // User can manually click "Back to Login" when ready
+      
     } catch (err) {
       setResetMessage("Could not connect to server. Please try again.");
+      setResetMessageType("error");
     } finally {
       setResetLoading(false);
     }
@@ -118,26 +175,30 @@ export default function Login() {
         {!showForgotPassword ? (
           // Login Form
           <>
-            {/* Welcome */}
             <div className="text-center mb-6">
               <h2 className="text-xl font-semibold">Welcome back</h2>
               <p className="text-gray-400 text-sm">Sign in to continue to AegisPhish</p>
             </div>
 
-            {/* Email */}
+            {/* Email with validation */}
             <div className="mb-4">
               <label className="text-sm text-gray-300">Email address</label>
               <input
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-                className="w-full mt-2 p-3 rounded-lg bg-gray-800 border border-gray-600 focus:border-teal-400 outline-none transition"
+                className={`w-full mt-2 p-3 rounded-lg bg-gray-800 border outline-none transition ${
+                  emailError ? "border-red-500 focus:border-red-400" : "border-gray-600 focus:border-teal-400"
+                }`}
               />
+              {emailError && (
+                <p className="text-xs text-red-400 mt-1">{emailError}</p>
+              )}
             </div>
 
-            {/* Password with Show/Hide Toggle */}
+            {/* Password */}
             <div className="mb-2">
               <label className="text-sm text-gray-300">Password</label>
               <div className="relative mt-2">
@@ -162,7 +223,12 @@ export default function Login() {
             {/* Forgot Password Link */}
             <div className="text-right mb-6">
               <button
-                onClick={() => setShowForgotPassword(true)}
+                onClick={() => {
+                  setShowForgotPassword(true);
+                  setResetMessage("");
+                  setResetMessageType("");
+                  setResetEmailError("");
+                }}
                 className="text-xs text-teal-400 hover:text-teal-300 transition hover:underline"
               >
                 Forgot password?
@@ -194,7 +260,9 @@ export default function Login() {
             </button>
           </>
         ) : (
-          // Forgot Password Form
+          // ============================================
+          // MODIFIED FORGOT PASSWORD FORM
+          // ============================================
           <>
             <div className="text-center mb-6">
               <h2 className="text-xl font-semibold">Reset Password</h2>
@@ -203,23 +271,28 @@ export default function Login() {
               </p>
             </div>
 
-            {/* Email */}
+            {/* Email with validation */}
             <div className="mb-4">
               <label className="text-sm text-gray-300">Email address</label>
               <input
                 type="email"
                 placeholder="you@example.com"
                 value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
+                onChange={handleResetEmailChange}
                 onKeyDown={(e) => e.key === "Enter" && handleForgotPassword()}
-                className="w-full mt-2 p-3 rounded-lg bg-gray-800 border border-gray-600 focus:border-teal-400 outline-none transition"
+                className={`w-full mt-2 p-3 rounded-lg bg-gray-800 border outline-none transition ${
+                  resetEmailError ? "border-red-500 focus:border-red-400" : "border-gray-600 focus:border-teal-400"
+                }`}
               />
+              {resetEmailError && (
+                <p className="text-xs text-red-400 mt-1">{resetEmailError}</p>
+              )}
             </div>
 
             {/* Reset Message */}
             {resetMessage && (
               <div className={`mb-4 px-4 py-3 rounded-lg text-sm text-center ${
-                resetMessage.includes("sent") 
+                resetMessageType === "success"
                   ? "bg-teal-500/10 border border-teal-500/30 text-teal-400"
                   : "bg-red-500/10 border border-red-500/30 text-red-400"
               }`}>
@@ -242,6 +315,8 @@ export default function Login() {
                 setShowForgotPassword(false);
                 setResetEmail("");
                 setResetMessage("");
+                setResetMessageType("");
+                setResetEmailError("");
               }}
               className="w-full mt-3 py-3 rounded-lg border border-gray-500 hover:bg-teal-500/10 hover:border-teal-400 transition"
             >
@@ -250,7 +325,6 @@ export default function Login() {
           </>
         )}
 
-        {/* Footer */}
         <div className="text-center mt-6 text-xs text-gray-500">
           <p className="mb-2">secured by AegisPhish</p>
           <p className="text-teal-400">▢ Protected · Real-time phishing detection</p>
