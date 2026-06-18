@@ -10,6 +10,7 @@ from app.ml.reputation import reputation_cache, cache_timestamp
 router = APIRouter()
 
 
+# Get all scans (admin-only endpoint)
 @router.get("/scans")
 def get_all_scans(current_user: dict = Depends(get_current_user)):
     """Get all scans (admin only)"""
@@ -44,6 +45,7 @@ def get_all_scans(current_user: dict = Depends(get_current_user)):
     return {"scans": scans}
 
 
+# Get pending reports (admin-only endpoint)
 @router.get("/reports")
 def get_reports(current_user: dict = Depends(get_current_user)):
     """Get pending reports (admin only)"""
@@ -55,6 +57,7 @@ def get_reports(current_user: dict = Depends(get_current_user)):
     return {"reports": reports}
 
 
+# Resolve a user report
 @router.post("/reports/{report_id}/resolve")
 def resolve_report(report_id: str, current_user: dict = Depends(get_current_user)):
     """Resolve a report (admin only)"""
@@ -76,6 +79,7 @@ def resolve_report(report_id: str, current_user: dict = Depends(get_current_user
     return {"message": "Report resolved successfully"}
 
 
+# Dismiss a user report
 @router.post("/reports/{report_id}/dismiss")
 def dismiss_report(report_id: str, current_user: dict = Depends(get_current_user)):
     """Dismiss a report (admin only)"""
@@ -97,6 +101,7 @@ def dismiss_report(report_id: str, current_user: dict = Depends(get_current_user
     return {"message": "Report dismissed successfully"}
 
 
+# Retrieve admin dashboard statistics
 @router.get("/stats")
 def get_admin_stats(current_user: dict = Depends(get_current_user)):
     """Get system statistics (admin only)"""
@@ -123,6 +128,7 @@ def get_admin_stats(current_user: dict = Depends(get_current_user)):
     }
 
 
+# Get all registered users (admin-only endpoint)
 @router.get("/users")
 def get_all_users(current_user: dict = Depends(get_current_user)):
     """Get all users (admin only)"""
@@ -134,6 +140,7 @@ def get_all_users(current_user: dict = Depends(get_current_user)):
     return {"users": users}
 
 
+# Update user role (user/admin)
 @router.patch("/users/{user_id}/role")
 def update_user_role(user_id: str, request: dict, current_user: dict = Depends(get_current_user)):
     """Update a user's role (admin only)"""
@@ -163,6 +170,7 @@ def update_user_role(user_id: str, request: dict, current_user: dict = Depends(g
         raise HTTPException(status_code=400, detail=f"Error updating user role: {str(e)}")
 
 
+# Delete user and associated data
 @router.delete("/users/{user_id}")
 def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a user (admin only)"""
@@ -194,6 +202,7 @@ def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error deleting user: {str(e)}")
     
+# Bulk delete selected scan records
 @router.post("/scans/bulk-delete")
 def bulk_delete_scans(data: dict, current_user: dict = Depends(get_current_user)):
     """Delete multiple scans (admin only)"""
@@ -231,6 +240,7 @@ def bulk_delete_scans(data: dict, current_user: dict = Depends(get_current_user)
     }
 
 
+# Clear ML reputation cache
 @router.post("/cache/clear")
 def clear_cache(current_user: dict = Depends(get_current_user)):
     """Clear reputation cache (admin only)"""

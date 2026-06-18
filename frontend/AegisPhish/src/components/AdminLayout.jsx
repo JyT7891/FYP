@@ -1,7 +1,10 @@
+// Admin layout component for admin dashboard UI shell
 // src/components/AdminLayout.jsx
+// React hooks and router utilities
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 
+// Sidebar navigation configuration
 const adminNavItems = [
   { icon: "📊", label: "Dashboard", path: "/admin" },
   { icon: "🔍", label: "All Scans", path: "/admin/scans" },
@@ -9,36 +12,49 @@ const adminNavItems = [
   { icon: "👥", label: "Users", path: "/admin/users" },
 ];
 
+// Main admin layout wrapper component
 export default function AdminLayout() {
+  // Router navigation and location tracking
   const navigate = useNavigate();
   const location = useLocation();
+  // UI state for logout confirmation modal
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [adminName, setAdminName] = useState(localStorage.getItem("name") || "Admin");
-  const [adminAvatar, setAdminAvatar] = useState(localStorage.getItem("avatar") || "");
+  const [adminName, setAdminName] = useState(
+    localStorage.getItem("name") || "Admin",
+  );
+  const [adminAvatar, setAdminAvatar] = useState(
+    localStorage.getItem("avatar") || "",
+  );
 
+  // Auth data from local storage
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
-  // Redirect if not admin
+  // Redirect non-admin users to dashboard
   useEffect(() => {
     if (role !== "admin") {
       navigate("/dashboard", { replace: true });
     }
   }, [role, navigate]);
 
+  // Clear session and logout admin
   const handleLogout = () => {
     localStorage.clear();
     navigate("/", { replace: true });
   };
 
+  // Determine currently active sidebar item
   const getActiveNav = () => {
-    const exactMatch = adminNavItems.find((item) => item.path === location.pathname);
+    const exactMatch = adminNavItems.find(
+      (item) => item.path === location.pathname,
+    );
     if (exactMatch) return exactMatch.label;
     return "Dashboard";
   };
 
   const activeNav = getActiveNav();
 
+  // Resolve admin avatar URL for display
   const getAvatarUrl = () => {
     if (!adminAvatar) return null;
     if (adminAvatar.startsWith("/static")) {
@@ -47,6 +63,7 @@ export default function AdminLayout() {
     return adminAvatar;
   };
 
+  // Render admin layout UI (sidebar, main content, modal)
   return (
     <div className="min-h-screen bg-[#0a0a1a] text-white flex w-full">
       {/* Admin Sidebar */}
@@ -57,7 +74,9 @@ export default function AdminLayout() {
             <div className="w-4 h-4 border-2 border-white rounded-sm"></div>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold tracking-wide">AegisPhish</span>
+            <span className="text-sm font-semibold tracking-wide">
+              AegisPhish
+            </span>
             <span className="text-xs text-purple-400">Admin Panel</span>
           </div>
         </div>
@@ -85,13 +104,19 @@ export default function AdminLayout() {
           <div className="flex items-center gap-3 px-2 py-2 mb-3">
             <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xs font-bold shrink-0 overflow-hidden">
               {getAvatarUrl() ? (
-                <img src={getAvatarUrl()} alt="avatar" className="w-full h-full object-cover" />
+                <img
+                  src={getAvatarUrl()}
+                  alt="avatar"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 adminName.charAt(0).toUpperCase()
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-200 truncate font-medium">{adminName}</p>
+              <p className="text-xs text-gray-200 truncate font-medium">
+                {adminName}
+              </p>
               <p className="text-xs text-purple-400 truncate">Administrator</p>
             </div>
           </div>
@@ -115,7 +140,9 @@ export default function AdminLayout() {
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-[#0f0f23] border border-purple-500/30 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold mb-2 text-purple-400">Confirm Logout</h3>
+            <h3 className="text-lg font-semibold mb-2 text-purple-400">
+              Confirm Logout
+            </h3>
             <p className="text-gray-400 text-sm mb-6">
               Are you sure you want to logout from Admin Panel?
             </p>

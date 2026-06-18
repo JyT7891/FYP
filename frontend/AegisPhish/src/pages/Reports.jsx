@@ -1,6 +1,9 @@
+// React hooks for state and lifecycle management
 import { useState, useEffect } from "react";
+// Router navigation hook for page routing
 import { useNavigate } from "react-router-dom";
 
+// Displays risk level badge based on scan prediction
 function RiskBadge({ prediction, risk }) {
   const styles =
     prediction === "Legitimate"
@@ -21,6 +24,7 @@ function RiskBadge({ prediction, risk }) {
   );
 }
 
+// Small horizontal bar chart for statistics breakdown
 function MiniBar({ label, value, max, color }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
@@ -37,60 +41,111 @@ function MiniBar({ label, value, max, color }) {
   );
 }
 
+// Main reports analytics page component
 export default function Reports() {
   const navigate = useNavigate();
+  // Scan history state
   const [scans, setScans] = useState([]);
+  // Loading state for scan data
   const [loading, setLoading] = useState(true);
+  // Error state for API failures
+  const [error, setError] = useState("");
+  // Prediction filter state (All, Phishing, Suspicious, Legitimate)
   const [filter, setFilter] = useState("All");
+  // Search input state for filtering scans
   const [search, setSearch] = useState("");
+  // Sort order state (newest or oldest)
   const [sortOrder, setSortOrder] = useState("newest");
+  // Loading state map for reporting actions
   const [reporting, setReporting] = useState({});
+  // Cached reported URL status map
   const [reportedUrls, setReportedUrls] = useState({});
 
+  // JWT token from localStorage for authenticated API calls
   const token = localStorage.getItem("token");
+  // Default request headers with authentication token
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
-  // Fetch scans with report status embedded
+  // Fetch all scan records and build report status map
+  const fetchScans = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/scans/all", {
+        headers,
+      });
+
+      // Handle 401 Unauthorized - Session Expired
+      if (response.status === 401) {
+        setError("Your session has expired. Please log in again.");
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = "/";
+        }, 2500);
+        return;
+      }
+
+      // Handle other non-200 responses
+      if (!response.ok) {
+        setError("Failed to load scan history. Please try again.");
+        setScans([]);
+        return;
+      }
+
+      const data = await response.json();
+      const scansData = data.scans || [];
+      setScans(scansData);
+
+      // Build reportedUrls map from the scan data
+      const reportMap = {};
+      scansData.forEach((scan) => {
+        if (scan.report_status) {
+          const normalizedUrl = scan.url?.trim().toLowerCase();
+          if (normalizedUrl) {
+            reportMap[normalizedUrl] = scan.report_status;
+          }
+        }
+      });
+      setReportedUrls(reportMap);
+    } catch (err) {
+      console.error("Error fetching scans:", err);
+      // Network error - backend is down
+      setError(
+        "Could not connect to server. Please check your connection and try again.",
+      );
+      setScans([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
-    fetch("http://127.0.0.1:8000/scans/all", { headers })
-      .then((r) => r.json())
-      .then((data) => {
-        const scansData = data.scans || [];
-        setScans(scansData);
-        
-        // Build reportedUrls map from the scan data
-        const reportMap = {};
-        scansData.forEach(scan => {
-          if (scan.report_status) {
-            const normalizedUrl = scan.url?.trim().toLowerCase();
-            if (normalizedUrl) {
-              reportMap[normalizedUrl] = scan.report_status;
-            }
-          }
-        });
-        setReportedUrls(reportMap);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetchScans();
   }, []);
 
-  // Stats
+  // Total scan count
   const total = scans.length;
+  // Count phishing detections
   const phishing = scans.filter((s) => s.prediction === "Phishing").length;
+  // Count suspicious detections
   const suspicious = scans.filter((s) => s.prediction === "Suspicious").length;
+  // Count legitimate detections
   const legitimate = scans.filter((s) => s.prediction === "Legitimate").length;
+  // Average risk score calculation
   const avgRisk =
     total > 0
       ? (scans.reduce((a, s) => a + s.risk_score, 0) / total).toFixed(1)
       : 0;
+  // Threat rate percentage calculation
   const threatRate =
     total > 0 ? (((phishing + suspicious) / total) * 100).toFixed(1) : 0;
 
-  // Filter + search + sort
+  // Filtered, searched, and sorted scan list
   const filtered = scans
     .filter((s) => filter === "All" || s.prediction === filter)
     .filter((s) => s.url?.toLowerCase().includes(search.toLowerCase()))
@@ -100,86 +155,104 @@ export default function Reports() {
         : new Date(a.scanned_at) - new Date(b.scanned_at),
     );
 
-  // CSV export
+  // Export filtered scan data to CSV file
   const handleExport = () => {
-    const rows = [
-      ["URL", "Prediction", "Risk Score (%)", "Detection Reason", "Scanned At", "Report Status"],
-      ...filtered.map((s) => [
-        s.url,
-        s.prediction,
-        s.risk_score,
-        s.reasons?.[0] || "—",
-        s.scanned_at ? new Date(s.scanned_at).toLocaleString() : "—",
-        s.report_status || "Not Reported",
-      ]),
-    ];
-    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "aegisphish_report.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    if (error || filtered.length === 0) return;
+
+    try {
+      const rows = [
+        [
+          "URL",
+          "Prediction",
+          "Risk Score (%)",
+          "Detection Reason",
+          "Scanned At",
+          "Report Status",
+        ],
+        ...filtered.map((s) => [
+          s.url,
+          s.prediction,
+          s.risk_score,
+          s.reasons?.[0] || "—",
+          s.scanned_at ? new Date(s.scanned_at).toLocaleString() : "—",
+          s.report_status || "Not Reported",
+        ]),
+      ];
+      const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aegisphish_report.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+      setError("Failed to export data.");
+    }
   };
 
-  // Check if a URL has a resolved report
+  // Check if a scan report is marked as resolved
   const isReportResolved = (scan) => {
-    return scan?.report_status === 'resolved';
+    return scan?.report_status === "resolved";
   };
 
-  // Check if a URL has any report (pending or resolved)
+  // Check if scan has any report status
   const isReported = (scan) => {
     return scan?.report_status !== undefined && scan?.report_status !== null;
   };
 
-  // Simplified report submission - just saves to database
+  // Submit phishing report for a scan URL
   const handleReportSubmit = async (scan) => {
     if (!scan?.url) return;
     const normalizedUrl = scan.url.trim().toLowerCase();
-    
+
     // Prevent duplicate reports or if already resolved
     if (isReported(scan) || isReportResolved(scan)) return;
-    
-    setReporting(prev => ({ ...prev, [normalizedUrl]: true }));
-    
+
+    setReporting((prev) => ({ ...prev, [normalizedUrl]: true }));
+
     try {
-      await fetch("http://127.0.0.1:8000/report", {
+      const response = await fetch("http://127.0.0.1:8000/report", {
         method: "POST",
         headers,
-        body: JSON.stringify({ 
-          url: scan.url, 
-          note: `[Auto-report] ${scan.prediction} URL detected with ${Math.round(scan.risk_score)}% risk score. Reasons: ${scan.reasons?.join(', ') || 'N/A'}` 
+        body: JSON.stringify({
+          url: scan.url,
+          note: `[Auto-report] ${scan.prediction} URL detected with ${Math.round(scan.risk_score)}% risk score. Reasons: ${scan.reasons?.join(", ") || "N/A"}`,
         }),
       });
-      
+
+      if (!response.ok) {
+        throw new Error("Failed to submit report");
+      }
+
       // Update the scan in the local state with pending status
-      setScans(prevScans => 
-        prevScans.map(s => 
-          s.url === scan.url 
-            ? { ...s, report_status: 'pending' }
-            : s
-        )
+      setScans((prevScans) =>
+        prevScans.map((s) =>
+          s.url === scan.url ? { ...s, report_status: "pending" } : s,
+        ),
       );
-      
+
       // Also update the reportedUrls map
-      setReportedUrls(prev => ({
+      setReportedUrls((prev) => ({
         ...prev,
-        [normalizedUrl]: 'pending'
+        [normalizedUrl]: "pending",
       }));
     } catch (error) {
       console.error("Report failed:", error);
+      setError("Failed to submit report. Please try again.");
     } finally {
-      setReporting(prev => ({ ...prev, [normalizedUrl]: false }));
+      setReporting((prev) => ({ ...prev, [normalizedUrl]: false }));
     }
   };
 
-  // Chart: scans per day (last 7 days)
+  // Last 7 days range generator for charts
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     return d.toISOString().split("T")[0];
   });
+  // Aggregated scan counts per day for chart
   const scansByDay = last7.map((day) => ({
     day: day.slice(5),
     phishing: scans.filter(
@@ -198,16 +271,20 @@ export default function Reports() {
         new Date(s.scanned_at).toISOString().startsWith(day),
     ).length,
   }));
+  // Maximum daily scan count for scaling charts
   const maxDay = Math.max(
     ...scansByDay.map((d) => d.phishing + d.legitimate + d.suspicious),
     1,
   );
 
-  // Get counts of resolved reports
-  const resolvedCount = scans.filter(s => s.report_status === 'resolved').length;
+  // Count of resolved reports
+  const resolvedCount = scans.filter(
+    (s) => s.report_status === "resolved",
+  ).length;
 
   return (
     <>
+      // Page header section
       <header className="border-b border-teal-500/20 px-6 py-4 flex items-center justify-between bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div>
           <h1 className="text-base font-semibold">Detection Reports</h1>
@@ -218,7 +295,8 @@ export default function Reports() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleExport}
-            className="text-xs px-3 py-1.5 rounded-lg border border-teal-500/40 text-teal-400 hover:bg-teal-500/10 transition"
+            disabled={loading || error || filtered.length === 0}
+            className="text-xs px-3 py-1.5 rounded-lg border border-teal-500/40 text-teal-400 hover:bg-teal-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ↓ Export CSV
           </button>
@@ -228,38 +306,58 @@ export default function Reports() {
           </span>
         </div>
       </header>
-
       <div className="p-8 space-y-6 w-full">
+        // Error banner section
+        {/* Error Banner - Show when backend is down or any error occurs */}
+        {error && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div>
+                <p className="text-sm font-semibold text-red-400">
+                  Connection Error
+                </p>
+                <p className="text-xs text-gray-400">{error}</p>
+              </div>
+            </div>
+            <button
+              onClick={fetchScans}
+              className="px-4 py-2 rounded-lg border border-teal-500/40 text-teal-400 text-sm hover:bg-teal-500/10 transition"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        // Summary statistics cards section
         {/* Detection outcome summary */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             {
               label: "Total Scanned",
-              value: total,
+              value: error ? "—" : total,
               accent: "text-white",
               sub: "All time",
             },
             {
               label: "Phishing",
-              value: phishing,
+              value: error ? "—" : phishing,
               accent: "text-red-400",
               sub: "Detected",
             },
             {
               label: "Suspicious",
-              value: suspicious,
+              value: error ? "—" : suspicious,
               accent: "text-orange-400",
               sub: "Flagged",
             },
             {
               label: "Legitimate",
-              value: legitimate,
+              value: error ? "—" : legitimate,
               accent: "text-teal-400",
               sub: "Safe",
             },
             {
               label: "Avg Risk Score",
-              value: `${avgRisk}%`,
+              value: error ? "—" : `${avgRisk}%`,
               accent: "text-gray-300",
               sub: "Per scan",
             },
@@ -276,7 +374,7 @@ export default function Reports() {
             </div>
           ))}
         </div>
-
+        // Analytics charts section
         {/* Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Stacked bar chart per day */}
@@ -287,46 +385,54 @@ export default function Reports() {
             <p className="text-xs text-gray-600 mb-4">
               Colour-coded by prediction outcome
             </p>
-            <div className="flex items-end gap-2 h-28">
-              {scansByDay.map((d) => {
-                const total = d.phishing + d.suspicious + d.legitimate;
-                return (
-                  <div
-                    key={d.day}
-                    className="flex-1 flex flex-col items-center gap-1"
-                  >
-                    <span className="text-xs text-gray-600">{total || ""}</span>
+            {error ? (
+              <div className="flex items-center justify-center h-28 text-gray-500 text-sm">
+                Data unavailable
+              </div>
+            ) : (
+              <div className="flex items-end gap-2 h-28">
+                {scansByDay.map((d) => {
+                  const total = d.phishing + d.suspicious + d.legitimate;
+                  return (
                     <div
-                      className="w-full flex flex-col-reverse rounded-t-sm overflow-hidden"
-                      style={{
-                        height: `${(total / maxDay) * 80}px`,
-                        minHeight: total > 0 ? "4px" : "0",
-                      }}
+                      key={d.day}
+                      className="flex-1 flex flex-col items-center gap-1"
                     >
+                      <span className="text-xs text-gray-600">
+                        {total || ""}
+                      </span>
                       <div
-                        className="bg-teal-500/50"
+                        className="w-full flex flex-col-reverse rounded-t-sm overflow-hidden"
                         style={{
-                          height: `${total > 0 ? (d.legitimate / total) * 100 : 0}%`,
+                          height: `${(total / maxDay) * 80}px`,
+                          minHeight: total > 0 ? "4px" : "0",
                         }}
-                      />
-                      <div
-                        className="bg-orange-400/60"
-                        style={{
-                          height: `${total > 0 ? (d.suspicious / total) * 100 : 0}%`,
-                        }}
-                      />
-                      <div
-                        className="bg-red-400/60"
-                        style={{
-                          height: `${total > 0 ? (d.phishing / total) * 100 : 0}%`,
-                        }}
-                      />
+                      >
+                        <div
+                          className="bg-teal-500/50"
+                          style={{
+                            height: `${total > 0 ? (d.legitimate / total) * 100 : 0}%`,
+                          }}
+                        />
+                        <div
+                          className="bg-orange-400/60"
+                          style={{
+                            height: `${total > 0 ? (d.suspicious / total) * 100 : 0}%`,
+                          }}
+                        />
+                        <div
+                          className="bg-red-400/60"
+                          style={{
+                            height: `${total > 0 ? (d.phishing / total) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-600">{d.day}</span>
                     </div>
-                    <span className="text-xs text-gray-600">{d.day}</span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex gap-4 mt-3 text-xs">
               <span className="flex items-center gap-1.5 text-red-400">
                 <span className="w-2 h-2 rounded-sm bg-red-400/60 inline-block"></span>
@@ -348,44 +454,54 @@ export default function Reports() {
             <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
               Prediction Breakdown
             </p>
-            <div className="space-y-3 mb-5">
-              <MiniBar
-                label="Phishing"
-                value={phishing}
-                max={total}
-                color="bg-red-400"
-              />
-              <MiniBar
-                label="Suspicious"
-                value={suspicious}
-                max={total}
-                color="bg-orange-400"
-              />
-              <MiniBar
-                label="Legitimate"
-                value={legitimate}
-                max={total}
-                color="bg-teal-400"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-gray-800/40 border border-gray-700 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Threat Rate</p>
-                <p className="text-xl font-bold text-red-400">{threatRate}%</p>
+            {error ? (
+              <div className="flex items-center justify-center h-28 text-gray-500 text-sm">
+                Data unavailable
               </div>
-              <div className="rounded-lg bg-gray-800/40 border border-gray-700 p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">Detection Rate</p>
-                <p className="text-xl font-bold text-teal-400">
-                  {total > 0
-                    ? (((phishing + suspicious) / total) * 100).toFixed(1)
-                    : 0}
-                  %
-                </p>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-3 mb-5">
+                  <MiniBar
+                    label="Phishing"
+                    value={phishing}
+                    max={total}
+                    color="bg-red-400"
+                  />
+                  <MiniBar
+                    label="Suspicious"
+                    value={suspicious}
+                    max={total}
+                    color="bg-orange-400"
+                  />
+                  <MiniBar
+                    label="Legitimate"
+                    value={legitimate}
+                    max={total}
+                    color="bg-teal-400"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-gray-800/40 border border-gray-700 p-3 text-center">
+                    <p className="text-xs text-gray-500 mb-1">Threat Rate</p>
+                    <p className="text-xl font-bold text-red-400">
+                      {threatRate}%
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-800/40 border border-gray-700 p-3 text-center">
+                    <p className="text-xs text-gray-500 mb-1">Detection Rate</p>
+                    <p className="text-xl font-bold text-teal-400">
+                      {total > 0
+                        ? (((phishing + suspicious) / total) * 100).toFixed(1)
+                        : 0}
+                      %
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
-
+        // Scan history table section
         {/* Scan History */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
           <div className="px-5 py-4 border-b border-teal-500/20 flex flex-wrap items-center gap-3">
@@ -394,7 +510,8 @@ export default function Reports() {
                 Scan History
               </p>
               <p className="text-xs text-gray-600 mt-0.5">
-                Click any scan to view details | Click ⚑ to report a phishing URL
+                Click any scan to view details | Click ⚑ to report a phishing
+                URL
               </p>
             </div>
             <input
@@ -403,17 +520,19 @@ export default function Reports() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="bg-gray-800/60 border border-gray-600 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-teal-400 transition placeholder-gray-600 w-48"
+              disabled={loading || error}
             />
             <div className="flex gap-1">
               {["All", "Phishing", "Suspicious", "Legitimate"].map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
+                  disabled={loading || error}
                   className={`text-xs px-3 py-1.5 rounded-lg border transition ${
                     filter === f
                       ? "border-teal-400 bg-teal-500/10 text-teal-400"
                       : "border-gray-600 text-gray-500 hover:border-teal-400 hover:text-gray-300"
-                  }`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {f}
                 </button>
@@ -422,7 +541,8 @@ export default function Reports() {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-xs text-gray-300 outline-none focus:border-teal-400"
+              disabled={loading || error}
+              className="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-xs text-gray-300 outline-none focus:border-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
@@ -433,6 +553,17 @@ export default function Reports() {
             <p className="text-gray-600 text-sm text-center py-12">
               Loading scan history…
             </p>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-4xl mb-3">📡</p>
+              <p className="text-gray-400 text-sm">{error}</p>
+              <button
+                onClick={fetchScans}
+                className="mt-4 px-4 py-2 rounded-lg border border-teal-500/40 text-teal-400 text-sm hover:bg-teal-500/10 transition"
+              >
+                Retry
+              </button>
+            </div>
           ) : filtered.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-12">
               No scans match your filters.
@@ -440,29 +571,35 @@ export default function Reports() {
           ) : (
             <div className="divide-y divide-teal-500/10">
               {filtered.map((scan, i) => {
-                const isResolved = scan?.report_status === 'resolved';
-                const isReportedStatus = scan?.report_status !== undefined && scan?.report_status !== null;
+                const isResolved = scan?.report_status === "resolved";
+                const isReportedStatus =
+                  scan?.report_status !== undefined &&
+                  scan?.report_status !== null;
                 const normalizedUrl = scan.url?.trim().toLowerCase();
                 const isReportingNow = reporting[normalizedUrl];
-                
+
                 // Determine if we should show the report button
                 // Only show for non-legitimate URLs that are NOT resolved
-                const showButton = scan.prediction !== "Legitimate" && !isResolved;
-                
+                const showButton =
+                  scan.prediction !== "Legitimate" && !isResolved;
+
                 let buttonText = "⚑ Report";
                 let buttonDisabled = false;
-                let buttonStyles = "border-orange-500/40 text-orange-400 hover:bg-orange-500/10";
-                
+                let buttonStyles =
+                  "border-orange-500/40 text-orange-400 hover:bg-orange-500/10";
+
                 if (isReportingNow) {
                   buttonText = "⏳ Reporting...";
                   buttonDisabled = true;
-                  buttonStyles = "border-gray-700 text-gray-600 cursor-not-allowed";
+                  buttonStyles =
+                    "border-gray-700 text-gray-600 cursor-not-allowed";
                 } else if (isReportedStatus) {
                   buttonText = "✓ Reported";
                   buttonDisabled = true;
-                  buttonStyles = "border-gray-700 text-gray-600 cursor-not-allowed";
+                  buttonStyles =
+                    "border-gray-700 text-gray-600 cursor-not-allowed";
                 }
-                
+
                 return (
                   <div
                     key={i}
@@ -532,7 +669,7 @@ export default function Reports() {
             </div>
           )}
 
-          {!loading && filtered.length > 0 && (
+          {!loading && !error && filtered.length > 0 && (
             <div className="px-5 py-3 border-t border-teal-500/10 flex items-center justify-between text-xs text-gray-600">
               <span>
                 Showing {filtered.length} of {scans.length} scans
@@ -542,14 +679,12 @@ export default function Reports() {
                   {scans.filter((s) => s.prediction !== "Legitimate").length}{" "}
                   threats detected
                 </span>
-                <span className="text-teal-400">
-                  {resolvedCount} resolved
-                </span>
+                <span className="text-teal-400">{resolvedCount} resolved</span>
               </div>
             </div>
           )}
         </div>
-
+        // Footer branding text
         <p className="text-center text-xs text-gray-700 pb-2">
           ▢ AegisPhish · ML-based phishing detection · Reports logged for
           cybersecurity monitoring

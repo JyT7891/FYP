@@ -1,3 +1,4 @@
+# Authentication module handling registration, login, JWT auth, and password recovery flows
 from datetime import datetime, timedelta
 import re
 from fastapi import APIRouter, HTTPException, Depends
@@ -17,16 +18,20 @@ from app.models import RegisterRequest, LoginRequest, ForgotPasswordRequest, Res
 from app.utils.security import create_token, decode_token, verify_password, hash_password
 from app.utils.email import send_verification_code_email
 
+# Initialize FastAPI router for authentication endpoints
 router = APIRouter()
+# HTTP Bearer token security dependency for protected routes
 security = HTTPBearer()
 
-# Temporary storage for verification codes (in production, use Redis or database)
+# Temporary in-memory store for email verification codes (use Redis in production)
 verification_codes = {}
 
+# Decode JWT and retrieve authenticated user context
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     return decode_token(credentials.credentials)
 
 
+# Send password reset email with secure reset link
 def send_password_reset_email(email: str, token: str, name: str):
     """Send password reset email to user"""
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
@@ -81,6 +86,7 @@ def send_password_reset_email(email: str, token: str, name: str):
         return False
 
 
+# User registration step 1: send verification code to email
 @router.post("/register")
 def register(data: RegisterRequest):
     """Step 1: Register - Send verification code to email"""
@@ -111,6 +117,7 @@ def register(data: RegisterRequest):
     return {"message": "Verification code sent", "user_id": data.email}
 
 
+# User registration step 2: verify email code and create account
 @router.post("/verify-registration")
 def verify_registration(data: VerifyRegistrationRequest):
     """Step 2: Verify registration with 6-digit code"""
@@ -152,6 +159,7 @@ def verify_registration(data: VerifyRegistrationRequest):
     }
 
 
+# Resend email verification code during registration
 @router.post("/resend-verification-code")
 def resend_verification_code(data: dict):
     """Resend verification code"""
@@ -175,6 +183,7 @@ def resend_verification_code(data: dict):
     return {"message": "New verification code sent"}
 
 
+# Authenticate user and issue JWT token
 @router.post("/login")
 def login(data: LoginRequest):
     user = users_collection.find_one({"email": data.email})
@@ -190,6 +199,7 @@ def login(data: LoginRequest):
         "email_verified": user.get("email_verified", False),
     }
 
+# Resend verification email for already registered users
 @router.post("/resend-verification")
 def resend_verification(current_user: dict = Depends(get_current_user)):
     """Resend verification email to user (kept for backward compatibility)"""
@@ -216,6 +226,7 @@ def resend_verification(current_user: dict = Depends(get_current_user)):
     return {"message": "Verification email sent successfully"}
 
 
+# Check if email is already registered in system
 @router.get("/check-email")
 def check_email_exists(email: str):
     """Check if email is already registered"""
@@ -223,6 +234,7 @@ def check_email_exists(email: str):
     return {"exists": user is not None}
 
 
+# Initiate password reset process via email
 @router.post("/forgot-password")
 def forgot_password(data: ForgotPasswordRequest):
     """Send password reset email"""
@@ -285,6 +297,7 @@ def forgot_password(data: ForgotPasswordRequest):
     return {"message": "If your email is registered, you will receive a reset link."}
 
 
+# Reset user password using secure token
 @router.post("/reset-password")
 def reset_password(data: ResetPasswordRequest):
     """Reset password using token"""
@@ -312,6 +325,7 @@ def reset_password(data: ResetPasswordRequest):
     return {"message": "Password reset successfully"}
 
 
+# Retrieve authenticated user profile information
 @router.get("/me")
 def get_me(current_user: dict = Depends(get_current_user)):
     from bson import ObjectId

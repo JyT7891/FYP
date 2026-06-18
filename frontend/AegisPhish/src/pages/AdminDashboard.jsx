@@ -1,7 +1,9 @@
 // src/pages/AdminDashboard.jsx
+// Main admin dashboard page for system monitoring and report management
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Reusable statistic display card component
 function StatCard({ label, value, sub, accent, icon }) {
   return (
     <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-5 flex flex-col gap-1">
@@ -17,6 +19,7 @@ function StatCard({ label, value, sub, accent, icon }) {
   );
 }
 
+// Modal showing report details with admin actions
 function ReportModal({ report, onClose, onResolve, onDismiss, resolving }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
@@ -77,10 +80,14 @@ function ReportModal({ report, onClose, onResolve, onDismiss, resolving }) {
   );
 }
 
+// Main admin dashboard component
 export default function AdminDashboard() {
+  // Router navigation hook
   const navigate = useNavigate();
+  // Loading state for dashboard data
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
+  // Aggregated system statistics state
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalScans: 0,
@@ -88,15 +95,18 @@ export default function AdminDashboard() {
     pendingReports: 0,
     phishingDetected: 0,
   });
+  // Recent scan records state
   const [recentScans, setRecentScans] = useState([]);
+  // Pending user reports state
   const [pendingReports, setPendingReports] = useState([]);
+  // Currently selected report for modal view
   const [selectedReport, setSelectedReport] = useState(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("role");
 
-  // Redirect if not admin
+  // Redirect non-admin users to dashboard
   useEffect(() => {
     if (userRole !== "admin") {
       navigate("/dashboard", { replace: true });
@@ -108,6 +118,7 @@ export default function AdminDashboard() {
     Authorization: `Bearer ${token}`,
   };
 
+  // Fetch dashboard data from backend APIs
   const fetchData = async () => {
     try {
       console.log("📊 Fetching admin data...");
@@ -147,6 +158,7 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
+  // Resolve a user report (mark as handled)
   const handleResolveReport = async (reportId) => {
     setResolving(true);
     try {
@@ -156,7 +168,7 @@ export default function AdminDashboard() {
         {
           method: "POST",
           headers,
-        }
+        },
       );
 
       const data = await res.json();
@@ -180,6 +192,7 @@ export default function AdminDashboard() {
     }
   };
 
+  // Dismiss a user report (mark as invalid)
   const handleDismissReport = async (reportId) => {
     setResolving(true);
     try {
@@ -189,7 +202,7 @@ export default function AdminDashboard() {
         {
           method: "POST",
           headers,
-        }
+        },
       );
 
       const data = await res.json();
@@ -213,6 +226,7 @@ export default function AdminDashboard() {
     }
   };
 
+  // Clear backend cache for admin maintenance
   const handleClearCache = async () => {
     try {
       const res = await fetch("http://127.0.0.1:8000/admin/cache/clear", {
@@ -229,12 +243,14 @@ export default function AdminDashboard() {
     }
   };
 
+  // Log out admin and clear session
   const handleLogout = () => {
     localStorage.clear();
     navigate("/", { replace: true });
   };
 
   if (loading) {
+    // Render admin dashboard UI
     return (
       <div className="min-h-screen bg-[#020c1b] text-white flex items-center justify-center">
         <div className="text-center">
@@ -245,9 +261,10 @@ export default function AdminDashboard() {
     );
   }
 
+  // Render admin dashboard UI
   return (
     <div className="min-h-screen bg-[#020c1b] text-white">
-      {/* Header */}
+      // Dashboard header section
       <header className="border-b border-teal-500/20 px-6 py-4 flex items-center justify-between bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div>
           <h1 className="text-base font-semibold">Admin Dashboard</h1>
@@ -269,10 +286,9 @@ export default function AdminDashboard() {
           </span>
         </div>
       </header>
-
-      {/* Main Content */}
+      // Main dashboard content area
       <div className="p-8 space-y-6">
-        {/* Stats Grid */}
+        // System statistics overview cards
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <StatCard
             label="Total Users"
@@ -310,10 +326,8 @@ export default function AdminDashboard() {
             icon="⏳"
           />
         </div>
-
-        {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Scans Table */}
+          // Recent scans table section
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
             <div className="px-5 py-4 border-b border-teal-500/20">
               <p className="text-xs text-gray-500 tracking-widest uppercase">
@@ -369,8 +383,7 @@ export default function AdminDashboard() {
               </button>
             </div>
           </div>
-
-          {/* Pending Reports */}
+          // Pending reports list section
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
             <div className="px-5 py-4 border-b border-teal-500/20">
               <p className="text-xs text-gray-500 tracking-widest uppercase">
@@ -418,13 +431,11 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-
         <p className="text-center text-xs text-gray-700 pb-2">
           ▢ AegisPhish Admin · System monitoring & threat management
         </p>
       </div>
-
-      {/* Report Modal */}
+      // Render report modal when a report is selected
       {selectedReport && (
         <ReportModal
           report={selectedReport}

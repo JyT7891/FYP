@@ -1,3 +1,4 @@
+# Scan history and analytics endpoints for user and anonymous scan data
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from bson import ObjectId
@@ -5,9 +6,11 @@ from bson import ObjectId
 from app.database import scans_collection, reports_collection
 from app.auth import get_current_user
 
+# Initialize FastAPI router for scan-related endpoints
 router = APIRouter()
 
 
+# Get recent scans (user + anonymous)
 @router.get("/scans/recent")
 def get_recent_scans(current_user: dict = Depends(get_current_user)):
     """Get recent 10 scans - includes user's own scans AND anonymous scans"""
@@ -27,6 +30,7 @@ def get_recent_scans(current_user: dict = Depends(get_current_user)):
     return {"scans": scans}
 
 
+# Get all scans with report status enrichment
 @router.get("/scans/all")
 def get_all_user_scans(current_user: dict = Depends(get_current_user)):
     """Get all scans - includes user's own scans AND anonymous scans with report status"""
@@ -70,6 +74,7 @@ def get_all_user_scans(current_user: dict = Depends(get_current_user)):
     return {"scans": scans}
 
 
+# Get scan statistics and detection metrics
 @router.get("/stats")
 def get_stats(current_user: dict = Depends(get_current_user)):
     """Get statistics - includes user's own scans AND anonymous scans"""
@@ -91,6 +96,7 @@ def get_stats(current_user: dict = Depends(get_current_user)):
     }
 
 
+# Get detailed scan information by ID
 @router.get("/scans/{scan_id}")
 def get_scan_by_id(scan_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific scan by ID"""

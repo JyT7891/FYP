@@ -1,9 +1,11 @@
+# ML feature extraction utilities for phishing URL detection
 import numpy as np
 import pandas as pd
 import joblib
 
 from app.ml.model import feature_columns
 
+# Load SHAP explainer for feature attribution (if available)
 # Load explainer (if it exists, otherwise create a placeholder)
 try:
     explainer = joblib.load("explainer.pkl")
@@ -12,6 +14,7 @@ except:
     print("⚠️ Explainer not found - SHAP values will be empty")
 
 
+# Extract basic lexical features from URL string
 def extract_url_features(url: str) -> dict:
     url_lower = url.lower()
     return {
@@ -35,6 +38,7 @@ def extract_url_features(url: str) -> dict:
     }
 
 
+# Construct ML feature vector from URL for model input
 def build_features(url: str) -> dict:
     url_lower = url.lower()
     domain = url.split("//")[-1].split("/")[0] if "//" in url else url
@@ -63,6 +67,7 @@ def build_features(url: str) -> dict:
     }
 
 
+# Convert URL into model-ready pandas DataFrame using feature columns
 def prepare_input(url: str) -> pd.DataFrame:
     feats = build_features(url)
     return pd.DataFrame(
@@ -71,6 +76,7 @@ def prepare_input(url: str) -> pd.DataFrame:
     )
 
 
+# Generate SHAP-based feature importance explanation for prediction
 def get_shap_explanation(feature_vector) -> dict:
     if explainer is None:
         return {}
@@ -88,6 +94,7 @@ def get_shap_explanation(feature_vector) -> dict:
     return dict(zip(feature_columns, values))
 
 
+# Generate human-readable reasoning for phishing detection output
 def explain_features(features: dict, prediction: int, prob: float, is_typo: bool = False) -> list[str]:
     reasons = []
 

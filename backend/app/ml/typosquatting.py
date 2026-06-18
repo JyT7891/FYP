@@ -1,8 +1,11 @@
+# Typosquatting detection utilities using domain similarity comparison
 import difflib
 from urllib.parse import urlparse
 
+# List of known legitimate top domains for comparison
 TOP_DOMAINS = []
 
+# Normalize and extract domain from URL
 def extract_domain(url: str) -> str:
     if not url.startswith("http"):
         url = "http://" + url
@@ -10,6 +13,7 @@ def extract_domain(url: str) -> str:
     return parsed.netloc.lower().replace("www.", "")
 
 
+# Determine whether a domain is likely a typosquatted variant
 def is_typosquatting(url: str) -> bool:
     global TOP_DOMAINS
     user_domain = extract_domain(url)
@@ -21,6 +25,7 @@ def is_typosquatting(url: str) -> bool:
     )
 
 
+# Update reference list of trusted top domains
 def set_top_domains(domains: list):
     global TOP_DOMAINS
     TOP_DOMAINS = domains

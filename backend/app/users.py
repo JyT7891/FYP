@@ -1,3 +1,4 @@
+# User profile management module (profile updates, password changes, avatar handling, account deletion)
 import os
 import uuid
 import shutil
@@ -12,12 +13,14 @@ from app.auth import get_current_user
 from app.utils.security import hash_password, verify_password
 from app.utils.email import send_verification_code_email
 
+# Initialize FastAPI router for user-related endpoints
 router = APIRouter()
 
-# Temporary storage for profile email verification codes
+# Temporary in-memory store for email change verification codes
 profile_verification_codes = {}
 
 
+# Update user profile information (name/email)
 @router.patch("/profile")
 def update_profile(data: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
     update = {}
@@ -61,6 +64,7 @@ def update_profile(data: ProfileUpdateRequest, current_user: dict = Depends(get_
     return {"message": "Profile updated.", "email_changed": email_changed}
 
 
+# Verify email change using 6-digit code
 @router.post("/verify-email-change")
 def verify_email_change(data: dict, current_user: dict = Depends(get_current_user)):
     """Verify email change with 6-digit code"""
@@ -96,6 +100,7 @@ def verify_email_change(data: dict, current_user: dict = Depends(get_current_use
     return {"message": "Email verified successfully"}
 
 
+# Resend verification code for email change
 @router.post("/resend-profile-verification")
 def resend_profile_verification(current_user: dict = Depends(get_current_user)):
     """Resend verification code for profile email change"""
@@ -124,6 +129,7 @@ def resend_profile_verification(current_user: dict = Depends(get_current_user)):
     return {"message": "New verification code sent successfully"}
 
 
+# Update user password
 @router.patch("/password")
 def update_password(data: PasswordUpdateRequest, current_user: dict = Depends(get_current_user)):
     user = users_collection.find_one({"_id": ObjectId(current_user["sub"])})
@@ -138,6 +144,7 @@ def update_password(data: PasswordUpdateRequest, current_user: dict = Depends(ge
     return {"message": "Password updated."}
 
 
+# Upload user avatar image
 @router.post("/avatar")
 async def upload_avatar(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
@@ -170,6 +177,7 @@ async def upload_avatar(file: UploadFile = File(...), current_user: dict = Depen
     return {"avatar": avatar_url}
 
 
+# Delete user avatar image
 @router.delete("/avatar")
 def delete_avatar(current_user: dict = Depends(get_current_user)):
     user = users_collection.find_one({"_id": ObjectId(current_user["sub"])})
@@ -189,6 +197,7 @@ def delete_avatar(current_user: dict = Depends(get_current_user)):
     return {"message": "Avatar removed successfully."}
 
 
+# Delete user account and all associated data
 @router.delete("/delete")
 def delete_account(current_user: dict = Depends(get_current_user)):
     user = users_collection.find_one({"_id": ObjectId(current_user["sub"])})
