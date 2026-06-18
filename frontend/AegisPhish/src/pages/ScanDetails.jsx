@@ -312,7 +312,7 @@ export default function ScanDetails() {
   // Render scan details UI
   return (
     <>
-      // Page header section
+      {/* Page header section */}
       <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -344,14 +344,12 @@ export default function ScanDetails() {
         </div>
       </header>
       <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
-        // Rescan validation error message section
         {/* Rescan Error Message */}
         {rescanError && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-400 text-sm">
             ⚠ {rescanError}
           </div>
         )}
-        // Display scanned URL information
         {/* URL Section */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">
@@ -367,8 +365,7 @@ export default function ScanDetails() {
               : "—"}
           </p>
         </div>
-        // Risk gauge and prediction summary section
-        {/* Result Row: Gauge + Summary */}
+        {/* Risk gauge and prediction summary section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <RiskGauge
             score={scan?.risk_score || 0}
@@ -417,8 +414,7 @@ export default function ScanDetails() {
             )}
           </div>
         </div>
-        // Full list of detection reasons section
-        {/* All Detection Reasons */}
+        {/* Full list of detection reasons section */}
         {scan?.reasons && scan.reasons.length > 0 && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
             <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
@@ -434,7 +430,6 @@ export default function ScanDetails() {
             </div>
           </div>
         )}
-        // SHAP feature importance visualization section
         {/* SHAP Feature Importance */}
         {shapEntries.length > 0 && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
@@ -470,7 +465,6 @@ export default function ScanDetails() {
             </div>
           </div>
         )}
-        // URL structural feature analysis section
         {/* URL Structure Analysis */}
         {scan?.url && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
@@ -527,7 +521,6 @@ export default function ScanDetails() {
             </div>
           </div>
         )}
-        // Rescan and report action buttons section
         {/* Action Buttons */}
         <div className="flex gap-4 justify-end pt-4">
           <button
@@ -545,7 +538,6 @@ export default function ScanDetails() {
             </button>
           )}
         </div>
-        // Footer branding section
         {/* Footer */}
         <p className="text-center text-xs text-gray-700 pt-4">
           ▢ AegisPhish · ML-powered phishing detection · SHAP explainability

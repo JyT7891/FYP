@@ -1,10 +1,7 @@
 // src/pages/Profile.jsx
-// React hooks for state and lifecycle management
 import { useState, useEffect } from "react";
-// Router navigation hook for page redirection
 import { useNavigate } from "react-router-dom";
 
-// Displays a user statistic card (e.g., scans, detection rate)
 function StatCard({ label, value, icon, color }) {
   return (
     <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-5">
@@ -23,7 +20,6 @@ function StatCard({ label, value, icon, color }) {
   );
 }
 
-// Badge showing activity type (scan, report, login)
 function ActivityBadge({ type }) {
   const styles = {
     scan: "bg-teal-500/10 text-teal-400 border-teal-500/30",
@@ -37,7 +33,72 @@ function ActivityBadge({ type }) {
   );
 }
 
-// Reusable form input field with validation and password toggle support
+function StrengthBar({ password }) {
+  const calc = (p) => {
+    if (!p) return 0;
+    let score = 0;
+
+    if (p.length >= 8) score++;
+    if (p.length >= 12) score++;
+    if (/[A-Z]/.test(p)) score++;
+    if (/[a-z]/.test(p)) score++;
+    if (/[0-9]/.test(p)) score++;
+    if (/[^A-Za-z0-9]/.test(p)) score++;
+    if (!/\s/.test(p) && p.length > 0) score++;
+
+    return Math.min(score, 5);
+  };
+
+  const score = calc(password);
+  const labels = ["", "Very weak", "Weak", "Fair", "Strong", "Very strong"];
+  const colors = ["", "#ef4444", "#f97316", "#eab308", "#22d3ee", "#14b8a6"];
+  const requirements = [
+    { text: "At least 8 characters", met: password.length >= 8 },
+    { text: "At least 12 characters (bonus)", met: password.length >= 12 },
+    { text: "Uppercase letter (A-Z)", met: /[A-Z]/.test(password) },
+    { text: "Lowercase letter (a-z)", met: /[a-z]/.test(password) },
+    { text: "Number (0-9)", met: /[0-9]/.test(password) },
+    {
+      text: "Special character (!@#$%^&*)",
+      met: /[^A-Za-z0-9]/.test(password),
+    },
+    { text: "No spaces", met: !/\s/.test(password) && password.length > 0 },
+  ];
+
+  if (!password) return null;
+
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1 mb-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            key={i}
+            className="h-1 flex-1 rounded-full transition-all duration-300"
+            style={{
+              backgroundColor: i <= score ? colors[score] : "#1f2937",
+            }}
+          />
+        ))}
+      </div>
+      <p className="text-xs mb-2" style={{ color: colors[score] }}>
+        {labels[score]}
+      </p>
+      <div className="space-y-1 text-xs">
+        {requirements.map((req, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className={req.met ? "text-teal-400" : "text-gray-600"}>
+              {req.met ? "✓" : "○"}
+            </span>
+            <span className={req.met ? "text-gray-300" : "text-gray-500"}>
+              {req.text}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Field({
   label,
   type = "text",
@@ -46,6 +107,7 @@ function Field({
   onChange,
   error,
   disabled,
+  children,
 }) {
   const [show, setShow] = useState(false);
   const isPassword = type === "password";
@@ -78,12 +140,12 @@ function Field({
           </button>
         )}
       </div>
+      {children}
       {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
     </div>
   );
 }
 
-// Temporary notification popup component
 function Toast({ message, type }) {
   if (!message) return null;
   const styles =
@@ -101,76 +163,52 @@ function Toast({ message, type }) {
   );
 }
 
-// Main user profile page component
 export default function Profile() {
   const navigate = useNavigate();
-  // Logged-in user data state
   const [user, setUser] = useState(null);
-  // User statistics state (scans, detection rate, etc.)
   const [stats, setStats] = useState(null);
-  // Recent scan/activity history
   const [recentActivity, setRecentActivity] = useState([]);
-  // Page loading state
   const [loading, setLoading] = useState(true);
-  // Toggle profile edit mode
   const [isEditing, setIsEditing] = useState(false);
-  // Toast notification state
   const [toast, setToast] = useState({ message: "", type: "" });
-  // Warning state when email is changed
   const [emailChangedWarning, setEmailChangedWarning] = useState(false);
 
-  // Controls email verification modal visibility
   const [showVerificationModal, setShowVerificationModal] = useState(false);
-  // Email verification code input state
   const [verificationCode, setVerificationCode] = useState("");
-  // Loading state for verification request
   const [verifying, setVerifying] = useState(false);
-  // Temporary user ID during email change verification
   const [tempUserId, setTempUserId] = useState("");
-  // Controls resend verification cooldown
   const [resendDisabled, setResendDisabled] = useState(false);
-  // Countdown timer for resend verification code
   const [resendTimer, setResendTimer] = useState(0);
 
-  // User profile avatar URL state
   const [avatar, setAvatar] = useState("");
-  // Avatar upload loading state
+  const [draftAvatar, setDraftAvatar] = useState("");
+  const [avatarFile, setAvatarFile] = useState(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
-  // Avatar removal loading state
   const [removingAvatar, setRemovingAvatar] = useState(false);
-  // Editable profile form state
+  
   const [profile, setProfile] = useState({ name: "", email: "" });
-  // Profile validation error state
   const [profileErrors, setProfileErrors] = useState({});
-  // Profile update loading state
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Password change form state
   const [passwords, setPasswords] = useState({
     current: "",
     newPass: "",
     confirm: "",
   });
-  // Password validation error state
   const [passwordErrors, setPasswordErrors] = useState({});
-  // Password update loading state
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  // JWT authentication token from localStorage
   const token = localStorage.getItem("token");
-  // Default API request headers with authorization
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   };
 
-  // Show toast notification
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast({ message: "", type: "" }), 4000);
   };
 
-  // Fetch user profile, stats, and recent activity data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -189,7 +227,6 @@ export default function Profile() {
         setStats(statsData);
         setRecentActivity(scansData.scans || []);
 
-        // Load avatar
         if (userData.avatar) {
           let avatarUrl = userData.avatar;
           if (avatarUrl.startsWith("/static")) {
@@ -207,8 +244,36 @@ export default function Profile() {
     fetchUserData();
   }, []);
 
-  // Check if email exists
-  // Check if email already exists in system
+  const handleEdit = () => {
+    setDraftAvatar(avatar);
+    setAvatarFile(null);
+    setProfile({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+    setProfileErrors({});
+    setAvatarLoading(false);
+    setRemovingAvatar(false);
+    setIsEditing(true);
+    setEmailChangedWarning(false);
+    setShowVerificationModal(false);
+  };
+
+  const handleCancel = () => {
+    setDraftAvatar(avatar);
+    setAvatarFile(null);
+    setProfile({
+      name: user?.name || "",
+      email: user?.email || "",
+    });
+    setProfileErrors({});
+    setAvatarLoading(false);
+    setRemovingAvatar(false);
+    setIsEditing(false);
+    setEmailChangedWarning(false);
+    setShowVerificationModal(false);
+  };
+
   const checkEmailExists = async (email) => {
     try {
       const res = await fetch(
@@ -223,23 +288,23 @@ export default function Profile() {
     }
   };
 
-  // Handle profile save
-  // Save updated profile information
   const handleProfileSave = async () => {
     const e = {};
+    
     if (!profile.name.trim()) e.name = "Name is required.";
 
-    if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) {
+    if (!profile.email.trim()) {
+      e.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) {
       e.email = "Enter a valid email address.";
     }
 
     const emailChanged = profile.email && profile.email !== user?.email;
 
-    if (emailChanged && profile.email) {
+    if (emailChanged && profile.email && profile.email.trim()) {
       const emailExists = await checkEmailExists(profile.email);
       if (emailExists) {
-        e.email =
-          "This email is already registered. Please use a different email address.";
+        e.email = "This email is already registered. Please use a different email address.";
       }
     }
 
@@ -248,6 +313,43 @@ export default function Profile() {
 
     setProfileLoading(true);
     try {
+      let newAvatarUrl = avatar;
+      
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append("file", avatarFile);
+        
+        const avatarRes = await fetch("http://127.0.0.1:8000/api/user/avatar", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        
+        if (avatarRes.ok) {
+          const avatarData = await avatarRes.json();
+          newAvatarUrl = `http://127.0.0.1:8000${avatarData.avatar}`;
+          localStorage.setItem("avatar", newAvatarUrl);
+          setAvatar(newAvatarUrl);
+          setDraftAvatar(newAvatarUrl);
+          setAvatarFile(null);
+        } else {
+          const errorData = await avatarRes.json();
+          showToast(errorData.detail || "Avatar upload failed.", "error");
+          setProfileLoading(false);
+          return;
+        }
+      } else if (draftAvatar !== avatar && draftAvatar === "") {
+        const deleteRes = await fetch("http://127.0.0.1:8000/api/user/avatar", {
+          method: "DELETE",
+          headers,
+        });
+        if (deleteRes.ok) {
+          localStorage.removeItem("avatar");
+          setAvatar("");
+          setDraftAvatar("");
+        }
+      }
+
       const res = await fetch("http://127.0.0.1:8000/api/user/profile", {
         method: "PATCH",
         headers,
@@ -256,6 +358,7 @@ export default function Profile() {
           email: profile.email || undefined,
         }),
       });
+      
       const data = await res.json();
       if (!res.ok) {
         showToast(data.detail || "Update failed.", "error");
@@ -264,7 +367,6 @@ export default function Profile() {
 
       localStorage.setItem("name", profile.name);
 
-      // If email was changed, show verification modal
       if (emailChanged) {
         setTempUserId(user?.user_id || "");
         setShowVerificationModal(true);
@@ -273,7 +375,6 @@ export default function Profile() {
           "warning",
         );
 
-        // Start resend timer
         setResendDisabled(true);
         setResendTimer(30);
         const timer = setInterval(() => {
@@ -287,7 +388,6 @@ export default function Profile() {
           });
         }, 1000);
 
-        // Refresh user data
         setTimeout(async () => {
           const userRes = await fetch("http://127.0.0.1:8000/api/auth/me", {
             headers,
@@ -308,8 +408,6 @@ export default function Profile() {
     }
   };
 
-  // Handle verification code submission
-  // Verify email change using 6-digit code
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
       showToast("Please enter the 6-digit verification code.", "error");
@@ -319,7 +417,7 @@ export default function Profile() {
     setVerifying(true);
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/api/user/verify-email-change", // ← Changed to profile endpoint
+        "http://127.0.0.1:8000/api/user/verify-email-change",
         {
           method: "POST",
           headers: {
@@ -344,7 +442,6 @@ export default function Profile() {
       setEmailChangedWarning(false);
       showToast("Email verified successfully!", "success");
 
-      // Refresh user data
       const userRes = await fetch("http://127.0.0.1:8000/api/auth/me", {
         headers,
       });
@@ -358,14 +455,12 @@ export default function Profile() {
     }
   };
 
-  // Handle resend verification code
-  // Resend email verification code
   const handleResendCode = async () => {
     if (resendDisabled) return;
 
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/api/user/resend-profile-verification", // ← Changed to profile endpoint
+        "http://127.0.0.1:8000/api/user/resend-profile-verification",
         {
           method: "POST",
           headers: {
@@ -403,17 +498,30 @@ export default function Profile() {
     }
   };
 
-  // Handle password save
-  // Update user password
   const handlePasswordSave = async () => {
     const e = {};
-    if (!passwords.current) e.current = "Current password is required.";
-    if (!passwords.newPass) e.newPass = "New password is required.";
-    else if (passwords.newPass.length < 8)
+    
+    // Check current password
+    if (!passwords.current) {
+      e.current = "Current password is required.";
+    }
+    
+    // Check new password
+    if (!passwords.newPass) {
+      e.newPass = "New password is required.";
+    } else if (passwords.newPass.length < 8) {
       e.newPass = "Must be at least 8 characters.";
-    if (!passwords.confirm) e.confirm = "Please confirm your new password.";
-    else if (passwords.confirm !== passwords.newPass)
+    } else if (passwords.current && passwords.newPass === passwords.current) {
+      e.newPass = "New password cannot be the same as your current password.";
+    }
+    
+    // Check confirm password
+    if (!passwords.confirm) {
+      e.confirm = "Please confirm your new password.";
+    } else if (passwords.newPass && passwords.confirm !== passwords.newPass) {
       e.confirm = "Passwords do not match.";
+    }
+    
     setPasswordErrors(e);
     if (Object.keys(e).length > 0) return;
 
@@ -441,66 +549,46 @@ export default function Profile() {
     }
   };
 
-  // Handle avatar upload
-  // Upload user profile picture
-  const handleAvatarUpload = async (e) => {
+  const handleAvatarFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      showToast("Only JPG, PNG, or WebP allowed.", "error");
+      return;
+    }
+    
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("File must be under 2MB.", "error");
+      return;
+    }
+    
     setAvatarLoading(true);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/user/avatar", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast(data.detail || "Upload failed.", "error");
-        return;
-      }
-      const fullUrl = `http://127.0.0.1:8000${data.avatar}`;
-      localStorage.setItem("avatar", fullUrl);
-      setAvatar(fullUrl);
-      showToast("Profile picture updated.");
-    } catch {
-      showToast("Could not upload image.", "error");
-    } finally {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setDraftAvatar(event.target.result);
+      setAvatarFile(file);
       setAvatarLoading(false);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Handle avatar removal
-  // Remove user profile picture
-  const handleRemoveAvatar = async () => {
+  const handleRemoveDraftAvatar = () => {
+    setDraftAvatar("");
+    setAvatarFile(null);
     setRemovingAvatar(true);
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/user/avatar", {
-        method: "DELETE",
-        headers,
-      });
-      if (!res.ok) throw new Error();
-      localStorage.removeItem("avatar");
-      setAvatar("");
-      showToast("Profile picture removed.");
-    } catch {
-      showToast("Failed to remove picture.", "error");
-    } finally {
-      setRemovingAvatar(false);
-    }
+    setTimeout(() => setRemovingAvatar(false), 300);
   };
 
-  // Get full avatar URL for display
-  const getAvatarUrl = () => {
+  const getDisplayAvatar = () => {
+    if (isEditing && draftAvatar !== undefined && draftAvatar !== null) {
+      return draftAvatar || null;
+    }
     if (!avatar) return null;
     if (avatar.startsWith("/static")) return `http://127.0.0.1:8000${avatar}`;
     return avatar;
   };
 
-  // Format date into readable string
   const formatDate = (dateString) => {
     if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -510,7 +598,6 @@ export default function Profile() {
     });
   };
 
-  // Convert timestamp into relative time (e.g., "2 min ago")
   const timeAgo = (dateString) => {
     if (!dateString) return "—";
     const diffMs = new Date() - new Date(dateString);
@@ -524,7 +611,6 @@ export default function Profile() {
     return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   };
 
-  // Loading screen while fetching profile data
   if (loading) {
     return (
       <div className="min-h-screen bg-[#020c1b] text-white flex items-center justify-center">
@@ -536,10 +622,8 @@ export default function Profile() {
     );
   }
 
-  // Render profile page UI
   return (
     <>
-      {/* Profile page header */}
       <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -551,35 +635,22 @@ export default function Profile() {
             </p>
           </div>
           <button
-            onClick={() => {
-              setIsEditing(!isEditing);
-              setEmailChangedWarning(false);
-              setShowVerificationModal(false);
-              if (isEditing) {
-                setProfile({
-                  name: user?.name || "",
-                  email: user?.email || "",
-                });
-                setProfileErrors({});
-              }
-            }}
+            onClick={isEditing ? handleCancel : handleEdit}
             className="px-4 py-2 rounded-lg border border-teal-500/40 text-teal-400 text-sm hover:bg-teal-500/10 transition flex items-center gap-2"
           >
             {isEditing ? "✕ Cancel" : "✎ Edit Profile"}
           </button>
         </div>
       </header>
+
       <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
-        {/* Profile Header Card */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <div className="flex flex-col md:flex-row items-center gap-6">
-            // User avatar section
-            {/* Avatar */}
             <div className="relative shrink-0">
               <div className="w-24 h-24 rounded-full bg-teal-500/20 border-2 border-teal-500/30 flex items-center justify-center overflow-hidden">
-                {getAvatarUrl() ? (
+                {getDisplayAvatar() ? (
                   <img
-                    src={getAvatarUrl()}
+                    src={getDisplayAvatar()}
                     alt={user?.name}
                     className="w-full h-full object-cover"
                   />
@@ -597,12 +668,12 @@ export default function Profile() {
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
                       className="hidden"
-                      onChange={handleAvatarUpload}
+                      onChange={handleAvatarFileSelect}
                     />
                   </label>
-                  {avatar && (
+                  {draftAvatar && (
                     <button
-                      onClick={handleRemoveAvatar}
+                      onClick={handleRemoveDraftAvatar}
                       disabled={removingAvatar}
                       className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 text-xs text-red-400 hover:text-red-300 bg-black/70 px-2 py-0.5 rounded-full whitespace-nowrap"
                     >
@@ -612,8 +683,7 @@ export default function Profile() {
                 </>
               )}
             </div>
-            // Profile information display/edit section
-            {/* User Info - Inline form when editing */}
+
             <div className="flex-1">
               {isEditing ? (
                 <div className="space-y-3">
@@ -681,7 +751,7 @@ export default function Profile() {
             </div>
           </div>
         </div>
-        {/* Action Buttons when editing */}
+
         {isEditing && (
           <div className="flex gap-4 justify-end">
             <button
@@ -693,7 +763,7 @@ export default function Profile() {
             </button>
           </div>
         )}
-        {/* Email Verification Status (only show if not verified) */}
+
         {!user?.email_verified && !isEditing && (
           <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
@@ -717,8 +787,7 @@ export default function Profile() {
             </div>
           </div>
         )}
-        // User statistics overview section
-        {/* Statistics Grid */}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             label="Total Scans"
@@ -745,8 +814,7 @@ export default function Profile() {
             color="bg-blue-500/10"
           />
         </div>
-        // Password change section
-        {/* Change Password Section (only when editing) */}
+
         {isEditing && (
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
             <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
@@ -772,7 +840,9 @@ export default function Profile() {
                   setPasswords((p) => ({ ...p, newPass: e.target.value }))
                 }
                 error={passwordErrors.newPass}
-              />
+              >
+                <StrengthBar password={passwords.newPass} />
+              </Field>
               <Field
                 label="Confirm new password"
                 type="password"
@@ -793,8 +863,7 @@ export default function Profile() {
             </div>
           </div>
         )}
-        // Account summary details section
-        {/* Account Summary Card (view only) */}
+
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
             Account Summary
@@ -828,8 +897,7 @@ export default function Profile() {
             </div>
           </div>
         </div>
-        // Recent activity list section
-        {/* Recent Activity */}
+
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
           <div className="px-5 py-4 border-b border-teal-500/20">
             <p className="text-xs text-gray-500 tracking-widest uppercase">
@@ -881,13 +949,12 @@ export default function Profile() {
             </div>
           )}
         </div>
-        // Footer branding text
+
         <p className="text-center text-xs text-gray-700 pb-2">
           ▢ AegisPhish · Protecting users from phishing attacks
         </p>
       </div>
-      // Email verification modal
-      {/* Verification Code Modal */}
+
       {showVerificationModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div className="bg-[#0a192f] border border-teal-500/30 rounded-xl p-6 max-w-md w-full shadow-2xl">
@@ -949,7 +1016,7 @@ export default function Profile() {
           </div>
         </div>
       )}
-      // Toast notification display
+
       <Toast message={toast.message} type={toast.type} />
     </>
   );

@@ -285,7 +285,6 @@ export default function ScanURL() {
 
   return (
     <>
-      // Page header section
       {/* Header — mirrors ScanDetails */}
       <header className="border-b border-teal-500/20 px-6 py-4 bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -320,7 +319,6 @@ export default function ScanURL() {
         </div>
       </header>
       <div className="p-8 space-y-6 w-full max-w-4xl mx-auto">
-        // URL input section
         {/* URL Input */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
           <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
@@ -354,8 +352,7 @@ export default function ScanURL() {
               )}
             </button>
           </div>
-          // URL validation error display
-          {/* Validation Error Message */}
+          {/* URL Validation Error Message */}
           {validationError && (
             <div className="mt-3 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
               ⚠ {validationError}
@@ -364,20 +361,17 @@ export default function ScanURL() {
           <p className="text-xs text-gray-600 mt-3">
             Powered by Random Forest ML · VirusTotal · SHAP Explainability
           </p>
-        </div>
-        // General error message display
-        {/* Error */}
+        </div> 
+        {/* General error message display */}
         {error && (
           <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
             {error}
           </div>
         )}
-        // Scan results section
         {/* Results — identical structure to ScanDetails */}
         {result && (
           <>
-            // Display scanned URL
-            {/* Scanned URL — same as ScanDetails */}
+            {/* Display scanned URL */}
             <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
               <p className="text-xs text-gray-500 tracking-widest uppercase mb-2">
                 Scanned URL
@@ -387,8 +381,7 @@ export default function ScanURL() {
               </p>
               <p className="text-xs text-gray-600 mt-3">Analysed just now</p>
             </div>
-            // Risk gauge and summary section
-            {/* Gauge + Summary — identical to ScanDetails */}
+            {/* Risk gauge and summary section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <RiskGauge
                 score={result.risk_score || 0}
@@ -437,8 +430,7 @@ export default function ScanURL() {
                 )}
               </div>
             </div>
-            // Detection reasons section
-            {/* Detection Reasons — identical to ScanDetails */}
+            {/* Detection Reasons */}
             {result.reasons && result.reasons.length > 0 && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
@@ -454,8 +446,7 @@ export default function ScanURL() {
                 </div>
               </div>
             )}
-            // SHAP explanation section
-            {/* SHAP Feature Importance — identical to ScanDetails */}
+            {/* SHAP Feature Importance */}
             {shapEntries.length > 0 && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
@@ -490,8 +481,7 @@ export default function ScanURL() {
                 </div>
               </div>
             )}
-            // URL structure analysis section
-            {/* URL Structure Analysis — identical to ScanDetails */}
+            {/* URL Structure Analysis */}
             {result.url && (
               <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-6">
                 <p className="text-xs text-gray-500 tracking-widest uppercase mb-4">
@@ -550,8 +540,7 @@ export default function ScanURL() {
                 </div>
               </div>
             )}
-            // Action buttons section (rescan/report)
-            {/* Action Buttons — identical to ScanDetails */}
+            {/* Action Buttons section (rescan/report) */}
             <div className="flex gap-4 justify-end pt-4">
               <button
                 onClick={handleRescan}
@@ -572,7 +561,6 @@ export default function ScanURL() {
             </div>
           </>
         )}
-        // Empty state when no scan has been run
         {/* Empty state */}
         {!result && !scanning && !error && !validationError && (
           <div className="rounded-xl border border-teal-500/10 border-dashed p-12 text-center">
@@ -586,7 +574,6 @@ export default function ScanURL() {
             </p>
           </div>
         )}
-        // Page footer section
         {/* Footer */}
         <p className="text-center text-xs text-gray-700 pt-4">
           ▢ AegisPhish · ML-powered phishing detection · SHAP explainability

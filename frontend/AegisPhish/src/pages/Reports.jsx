@@ -284,7 +284,7 @@ export default function Reports() {
 
   return (
     <>
-      // Page header section
+      {/* Page header section */}
       <header className="border-b border-teal-500/20 px-6 py-4 flex items-center justify-between bg-[#030e1c]/80 backdrop-blur sticky top-0 z-10">
         <div>
           <h1 className="text-base font-semibold">Detection Reports</h1>
@@ -307,7 +307,6 @@ export default function Reports() {
         </div>
       </header>
       <div className="p-8 space-y-6 w-full">
-        // Error banner section
         {/* Error Banner - Show when backend is down or any error occurs */}
         {error && (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 flex items-center justify-between flex-wrap gap-3">
@@ -327,8 +326,7 @@ export default function Reports() {
             </button>
           </div>
         )}
-        // Summary statistics cards section
-        {/* Detection outcome summary */}
+        {/* Summary statistics cards section */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             {
@@ -374,8 +372,7 @@ export default function Reports() {
             </div>
           ))}
         </div>
-        // Analytics charts section
-        {/* Charts */}
+        {/* Analytics charts section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Stacked bar chart per day */}
           <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] p-5">
@@ -501,7 +498,6 @@ export default function Reports() {
             )}
           </div>
         </div>
-        // Scan history table section
         {/* Scan History */}
         <div className="rounded-xl border border-teal-500/20 bg-gradient-to-b from-[#0a192f] to-[#06111f] overflow-hidden">
           <div className="px-5 py-4 border-b border-teal-500/20 flex flex-wrap items-center gap-3">
@@ -577,9 +573,6 @@ export default function Reports() {
                   scan?.report_status !== null;
                 const normalizedUrl = scan.url?.trim().toLowerCase();
                 const isReportingNow = reporting[normalizedUrl];
-
-                // Determine if we should show the report button
-                // Only show for non-legitimate URLs that are NOT resolved
                 const showButton =
                   scan.prediction !== "Legitimate" && !isResolved;
 
@@ -684,7 +677,7 @@ export default function Reports() {
             </div>
           )}
         </div>
-        // Footer branding text
+        {/* Footer branding text */}
         <p className="text-center text-xs text-gray-700 pb-2">
           ▢ AegisPhish · ML-based phishing detection · Reports logged for
           cybersecurity monitoring

@@ -120,7 +120,6 @@ export default function AdminReports() {
       console.log("Report URL:", selectedReport?.url);
       console.log("Message:", authorityMessage);
 
-      // Dummy API call - replace with actual backend endpoint if needed
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       // Simulate successful email send
@@ -141,7 +140,6 @@ export default function AdminReports() {
   };
 
   // List of supported cybersecurity authority contacts
-  // Predefined authority email options
   const authorityOptions = [
     {
       name: "MCMC (Malaysian Communications and Multimedia Commission)",
@@ -211,7 +209,6 @@ export default function AdminReports() {
       </div>
 
       {/* Modal showing selected report details */}
-      {/* Report Details Modal */}
       {selectedReport && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div className="bg-[#0f0f23] border border-purple-500/30 rounded-xl p-6 max-w-lg w-full shadow-2xl">
@@ -271,7 +268,6 @@ export default function AdminReports() {
       )}
 
       {/* Modal for forwarding report to cybersecurity authorities */}
-      {/* Send to Authorities Modal */}
       {showAuthorityModal && selectedReport && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div className="bg-[#0f0f23] border border-yellow-500/30 rounded-xl p-6 max-w-lg w-full shadow-2xl">
