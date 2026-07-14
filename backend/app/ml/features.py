@@ -5,14 +5,11 @@ import joblib
 
 from app.ml.model import feature_columns
 
-# Load SHAP explainer for feature attribution (if available)
-# Load explainer (if it exists, otherwise create a placeholder)
 try:
     explainer = joblib.load("explainer.pkl")
+    feature_columns = joblib.load("feature_columns.pkl") 
 except:
     explainer = None
-    print("⚠️ Explainer not found - SHAP values will be empty")
-
 
 # Extract basic lexical features from URL string
 def extract_url_features(url: str) -> dict:
@@ -42,28 +39,119 @@ def extract_url_features(url: str) -> dict:
 def build_features(url: str) -> dict:
     url_lower = url.lower()
     domain = url.split("//")[-1].split("/")[0] if "//" in url else url
+    
+    # Return the dictionary directly with all 87 features
     return {
+        # Basic URL structure
         "length_url": len(url),
         "length_hostname": len(domain),
+        "ip": int(any(part.isdigit() for part in domain.split("."))),
+        
+        # Character counts
         "nb_dots": url.count("."),
         "nb_hyphens": url.count("-"),
         "nb_at": url.count("@"),
         "nb_qm": url.count("?"),
         "nb_and": url.count("&"),
+        "nb_or": url.count("|"),
         "nb_eq": url.count("="),
+        "nb_underscore": url.count("_"),
+        "nb_tilde": url.count("~"),
+        "nb_percent": url.count("%"),
         "nb_slash": url.count("/"),
+        "nb_star": url.count("*"),
+        "nb_colon": url.count(":"),
+        "nb_comma": url.count(","),
+        "nb_semicolumn": url.count(";"),
+        "nb_dollar": url.count("$"),
+        "nb_space": url.count(" "),
         "nb_www": int("www" in url_lower),
+        "nb_com": int(".com" in url_lower),
+        "nb_dslash": url.count("//"),
+        
+        # Protocol indicators
         "http_in_path": int("http" in url_lower),
         "https_token": int("https" in url_lower),
+        
+        # Ratios
         "ratio_digits_url": sum(c.isdigit() for c in url) / max(len(url), 1),
         "ratio_digits_host": sum(c.isdigit() for c in domain) / max(len(domain), 1),
-        "shortening_service": int(any(x in url_lower for x in ["bit.ly", "tinyurl", "t.co"])),
-        "ip": int(any(part.isdigit() for part in domain.split("."))),
+        
+        # Suspicious patterns
+        "punycode": int("xn--" in url_lower),
+        "port": 0,
+        "tld_in_path": 0,
+        "tld_in_subdomain": 0,
+        "abnormal_subdomain": 0,
+        "nb_subdomains": domain.count(".") if domain else 0,
+        "prefix_suffix": 0,
+        "random_domain": 0,
+        "shortening_service": int(any(x in url_lower for x in ["bit.ly", "tinyurl", "t.co", "goo.gl", "ow.ly"])),
+        "path_extension": 0,
+        
+        # Redirects
+        "nb_redirection": 0,
+        "nb_external_redirection": 0,
+        
+        # Word analysis
+        "length_words_raw": len(url),
+        "char_repeat": 0,
+        "shortest_words_raw": 0,
+        "shortest_word_host": 0,
+        "shortest_word_path": 0,
+        "longest_words_raw": 0,
+        "longest_word_host": 0,
+        "longest_word_path": 0,
+        "avg_words_raw": 0,
+        "avg_word_host": 0,
+        "avg_word_path": 0,
+        
+        # Brand/domain
+        "phish_hints": int(any(x in url_lower for x in ["login", "verify", "secure", "account", "update", "confirm"])),
+        "domain_in_brand": 0,
+        "brand_in_subdomain": 0,
+        "brand_in_path": 0,
+        "suspecious_tld": int(any(url_lower.endswith(x) for x in [".tk", ".ml", ".ga", ".cf", ".xyz", ".top", ".club", ".online", ".site"])),
+        "statistical_report": 0,
+        
+        # Hyperlink features
+        "nb_hyperlinks": 0,
+        "ratio_inthyperlinks": 0,
+        "ratio_exthyperlinks": 0,
+        "ratio_nullhyperlinks": 0,
+        "nb_extcss": 0,
+        "ratio_intredirection": 0,
+        "ratio_extredirection": 0,
+        "ratio_interrors": 0,
+        "ratio_exterrors": 0,
+        "login_form": int("login" in url_lower or "signin" in url_lower),
+        "external_favicon": 0,
+        "links_in_tags": 0,
+        "submit_email": int("mailto:" in url_lower),
+        "ratio_intmedia": 0,
+        "ratio_extmedia": 0,
+        "sfh": 0,
+        "iframe": 0,
+        "popup_window": 0,
+        
+        # Mouse/UI
+        "safe_anchor": 0,
+        "onmouseover": 0,
+        "right_clic": 0,
+        "empty_title": 0,
+        
+        # Domain registration
+        "domain_in_title": 0,
+        "domain_with_copyright": 0,
+        "whois_registered_domain": 1,
+        "domain_registration_length": 0,
+        "domain_age": 0,
+        
+        # External reputation
         "web_traffic": 0,
-        "page_rank": 0,
         "dns_record": 1,
         "google_index": 1,
-        "domain_age": 0,
+        "page_rank": 0,
     }
 
 
